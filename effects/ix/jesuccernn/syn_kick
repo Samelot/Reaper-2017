@@ -1,0 +1,57 @@
+desc:syn_kick :: ccernn.2009 :: v0.0.2
+// todo:log/exp/pow envelopes
+
+slider1: 100   < 1,  250, 1 >freq start
+slider2: 5     < 1,  250, 1 >freq end
+slider3: 16    < 1,  250, 1 >attack
+slider4: 100   < 1,  250, 1 >decay
+slider5: -6    <-60, 6,   1 >volume
+
+//@init
+//  ph = 0;
+//  vo_n = 0;
+
+@slider
+  start  = slider1;
+  end    = slider2;
+  attack = slider3;
+  decay  = (slider4*slider4);
+  volume = 2^(slider5/6);
+
+@block
+
+  while (
+    midirecv(offset,msg1,msg23) ? (
+      msg = msg1 & 240;
+      // note on
+      (msg == 9*16) ? (
+        note   = msg23 & 127;
+        freq   = 440 * pow(2.0,(note-69.0)/12.0);
+        volu = ((msg23/256)|0) / 127;
+        vo = volu;
+        fr = start;
+        //ph = 0;
+      );
+      //// note off
+      //(msg == 8*16) ? (
+      //  note==(msg23&127) ? at = 0;
+      //);
+      midisend(offset,msg1,msg23);
+    );
+  );
+
+@sample
+
+  invattack = 1/attack;
+  invdecay  = 1/decay;
+
+  vo += ( 0    - vo ) * invdecay;
+  fr += ( end  - fr ) * invdecay;
+  av += ( vo   - av ) * invattack;
+  af += ( fr   - af ) * invattack;
+  phadd = af/srate;
+  ph += phadd;
+  ph >= 1 ? ph-=1;
+  w = sin(ph*($pi*2));
+  spl0 =spl1 = (w * volume * av);
+

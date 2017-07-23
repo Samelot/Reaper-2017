@@ -1,0 +1,22 @@
+desc:fx_pitch :: ccernn.2009 :: v0.0.0
+
+// based on code from
+// 1st ever jesusonic tutorial
+// by Loser
+
+slider1: 1.5 <0.1,5.0,0.1>pitch
+slider2: 4096 <1,10000,1>size
+
+@slider
+  pitch = slider1;
+  size  = slider2;
+
+//@block
+//  size = srate/8;
+
+@sample
+  bpos[0] = spl0;
+  bpos[size] = spl1;
+  spl0 = (bpos*pitch)[ -floor(bpos*pitch/size) * size ];
+  spl1 = (bpos*pitch)[ -floor(bpos*pitch/size) * size + size ];
+  (bpos+=1) >= size ? bpos=0;

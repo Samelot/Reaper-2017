@@ -1,0 +1,29 @@
+desc:misc_ipc :: ccernn.2009 :: v0.0.1
+slider1:0<0,2,1{off,read,read/write}>mode
+slider2:0<0,1>gmem[0] =
+slider3:0<0,1>reg00 =
+slider4:0<0,1>spl0 =
+slider5:0<0,1>set gmem[0]
+slider6:0<0,1>set reg00
+slider7:0<0,1>set spl0
+@slider
+  power    = slider1;
+  gmem_out = slider5;
+  reg_out  = slider6;
+  spl_out  = slider7;
+@block
+  power>0 ? (
+    slider2 = gmem[0];
+    slider3 = reg00;
+    slider4 = s;
+    sliderchange(slider2+slider3+slider4);
+  );
+  power>1 ? (
+    gmem[0] = gmem_out;
+    reg00   = reg_out;
+  );
+  s = 0;
+@sample
+  power>0 ? s += (spl0/samplesblock);
+  power>1 ? spl0 = spl_out;
+

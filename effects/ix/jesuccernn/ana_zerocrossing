@@ -1,0 +1,35 @@
+desc:ana_zerocrossing :: ccernn.2009 :: v0.0.4
+
+slider1:0<0,63,1>signal input
+slider2:-1<-1,63,1>sync output
+slider3:0<0,1000,1>hold (min dist, samples)
+
+@init
+
+  prev = 0;
+  wait = 0;
+
+@slider
+
+  anain = slider1;
+  sync  = slider2;
+  hold  = slider3;
+
+@sample
+
+  in = spl(anain);
+  out = 0;
+
+  prev < 0 ? (
+    in >= 0 ? (
+      wait <= 0 ? (
+        out = 0.95;
+        wait = hold;
+      );
+    );
+  );
+
+  wait > 0 ? wait-=1;
+
+  prev = in;
+  sync>=0 ? spl(sync) = out;

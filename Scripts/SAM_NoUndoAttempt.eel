@@ -1,0 +1,26 @@
+Undo_BeginBlock();
+Main_OnCommand(NamedCommandLookup("_SWS_BLACKTRACK"), 0);
+Main_OnCommand(40707, 0);
+Main_OnCommand(NamedCommandLookup("_SWS_BLACKTRACK"), 0);
+Main_OnCommand(40296, 0);
+Main_OnCommand(40297, 0);
+//Main_OnCommand(40297, 0);
+//OscLocalMessageToHost("/track/1/mute/toggle", 1);
+//OscLocalMessageToHost("/track/1/mute/toggle", 0);
+
+/*
+OscLocalMessageToHost("/track/1/select", 1);
+OscLocalMessageToHost("/track/1/select", 0);
+
+OscLocalMessageToHost("/track/2/select", 1);
+OscLocalMessageToHost("/track/2/select", 0);
+
+OscLocalMessageToHost("/track/3/select", 1);
+OscLocalMessageToHost("/track/3/select", 0);
+
+OscLocalMessageToHost("/track/10/select", 1);
+OscLocalMessageToHost("/track/10/select", 0);
+*/
+
+UpdateArrange();     
+Undo_EndBlock("set take x active",-4);

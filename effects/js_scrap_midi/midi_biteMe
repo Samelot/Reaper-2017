@@ -1,0 +1,42 @@
+desc: mr_midiBiteMe v0.1 [25 Mar 11 15:44 -0400]
+
+/*
+	Randomly eat MIDI notes
+*/
+/* (c) 2011 Michael Rees
+   distributed under http://creativecommons.org/licenses/by-sa/3.0/
+   I am not responsible for any adverse events whose cause you might try to attribute to this code.
+*/
+
+in_pin: none
+out_pin: none
+
+slider1: 0<-1,16,1{All,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}> MIDI Channel In
+slider3: 25<0,100,0.1> Munch %
+
+////////////////////
+@init
+inCh = slider1;
+eatMe = slider3;
+
+/////////////////////
+@slider
+inCh = slider1;
+eatMe = slider3;
+
+/////////////////////
+@block
+while (
+	midirecv(offset,msg1,msg23) ? (
+		status = msg1 & $xF0;
+		(status == $x90) ? (
+			ch = (msg1 & $x0F) + 1;
+			(ch == inCh) || (inCh == 0) ? (
+				eatMe > rand(100) ? (
+					offset = -1;
+				);
+			);
+		);
+		offset > -1 ? midisend(offset,msg1,msg23);
+	);
+);

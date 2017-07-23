@@ -1,0 +1,21 @@
+//Main_OnCommand(40297, 0);
+//OscLocalMessageToHost("/track/1/volume", "0.0");
+//OscLocalMessageToHost("/1/volume1",  0.002514);
+//OscLocalMessageToHost("/track/1/volume/db", -150.0);
+//OscLocalMessageToHost("/track/3/mute/toggle", 1);
+//OscLocalMessageToHost("/track/1/select", 1);
+//OscLocalMessageToHost("/track/1/select", 0);
+/*
+OscLocalMessageToHost("/track/1/select", 1);
+OscLocalMessageToHost("/track/1/select", 0);
+
+OscLocalMessageToHost("/track/2/select", 1);
+OscLocalMessageToHost("/track/2/select", 0);
+
+OscLocalMessageToHost("/track/3/select", 1);
+OscLocalMessageToHost("/track/3/select", 0);
+
+OscLocalMessageToHost("/track/10/select", 1);
+OscLocalMessageToHost("/track/10/select", 0);
+*/
+

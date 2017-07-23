@@ -1,0 +1,24 @@
+desc:fx_squarify :: ccernn.2009 : v0.0.1
+
+slider1: 0.75 < 0, 1, 0.001 > volume
+slider2: 1    < 0, 1, 0.001 > filter
+
+@init
+  vol = 0;
+  n0 = 0;
+  n1 = 0;
+
+@slider
+  vol = slider1*slider1;
+  flt = slider2*slider2;
+
+@sample
+  play_state & 1 ? (
+    spl0 < 0 ? spl0 = -vol;
+    spl0 > 0 ? spl0 =  vol;
+    spl1 < 0 ? spl1 = -vol;
+    spl1 > 0 ? spl1 =  vol;
+    spl0 = ( n0 += ((spl0-n0) * flt) );
+    spl1 = ( n1 += ((spl1-n1) * flt) );
+  );
+

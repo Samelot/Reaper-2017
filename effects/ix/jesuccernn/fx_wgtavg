@@ -1,0 +1,34 @@
+desc:fx_wgtavg :: ccernn.2009 :: v0.0.1
+
+// behaves similar to ReaEq, bandwidth=4,
+// speed = filter-hz
+
+slider1:1<0,1,0.001>weight
+
+@init
+  n0 = 0;
+  n1 = 0;
+
+@slider
+  weight = slider1*slider1;
+
+@sample
+  spl0 = ( n0 += ((spl0-n0) * weight) );
+  spl1 = ( n1 += ((spl1-n1) * weight) );
+
+  // http://www.musicdsp.org/archive.php?classid=3#263
+  // 102 Basic Lowpass (all-pole)
+  // A first order lowpass filter, by finite difference appoximation (differentials --> differences).
+  //   a0 = f
+  //   b1 = 1 - f
+  //   out = s += f * ( in - s );
+
+  // http://sol.gfxile.net/interpolation/#c7
+  // 7. Weighted Average
+  // Also known, in more general terms, as low pass filter
+  // v = ((v * (N - 1)) + w) / N; 
+  // v is the current value,
+  // w is the value towards which we want to move,
+  // and N is the slowdown factor.
+  // The higher N, the slower v approaches w.
+

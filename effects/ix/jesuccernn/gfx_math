@@ -1,0 +1,63 @@
+desc:gfx_math :: ccern.2009 :: v0.0.3
+
+slider1:0 < 0,   14, 1{x,x*x,x*x*x,x^b,t_to_a_divb,log,log10,exp,sin,cos,tan,asin,acos,atan,halfsine }> y =
+slider2:1 <-1,   1,  0.01 >a
+slider3:1 <-100,100, 0.01 >b
+slider4:1 <-1,   1,  0.01 >t
+
+@init
+  bpos=0;
+
+@slider
+  mode   = slider1;
+  a      = slider2;
+  b      = slider3;
+  t      = slider4;
+
+//@block
+//  blah+=samplesblock;
+
+//@sample
+//  spl0=spl0;
+//  spl1=spl1;
+
+@gfx
+  t = slider4;
+  gfx_clear = 0;
+  gfx_a = 1;
+
+  w2 = gfx_w * 0.5;
+  h2 = gfx_h * 0.5;
+
+  gfx_r=.5; gfx_g=0; gfx_b=0;
+  gfx_x=0; gfx_y=h2;
+  gfx_lineto(gfx_w,h2,0);
+  gfx_x=w2; gfx_y=0;
+  gfx_lineto(w2,gfx_h,0);
+  n = -1;
+  nadd = 2 / gfx_w;
+  x = 0;
+  loop( gfx_w,
+    mode==0 ? ( y  = n;          ) :
+    mode==1 ? ( y  = n*n;        ) :
+    mode==2 ? ( y  = n*n*n;      ) :
+    mode==3 ? ( y  = n^b;        ) :
+    mode==4 ? ( y  = t;          ) :
+    mode==5 ? ( y  = log(n*b);   ) :
+    mode==6 ? ( y  = log10(n*b); ) :
+    mode==7 ? ( y  = exp(n*b);   ) :
+    mode==8 ? ( y  = sin(n*b);   ) :
+    mode==9 ? ( y  = cos(n*b);   ) :
+    mode==10 ? ( y = tan(n*b);   ) :
+    mode==11 ? ( y = asin(n*b);  ) :
+    mode==12 ? ( y = acos(n*b);  ) :
+    mode==13 ? ( y = atan(n*b);  ) :
+//    mode==14 ? ( y = n*(2-abs(n));  );
+    mode==14 ? ( y = (n*2)*(2-(n*2));  );
+    gfx_x = x;
+    gfx_y = ( h2 - (y * h2) );
+    gfx_setpixel(1,1,1); 
+    n += nadd;
+    x += 1;
+    ((b>0) && (n>0)) ? t += ((a - t) / b);
+  );

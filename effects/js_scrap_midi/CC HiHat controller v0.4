@@ -1,0 +1,232 @@
+/*
+Copyright (C) 2009-2014, Jeffos
+All rights reserved.
+License: GPL - http://www.gnu.org/licenses/gpl.html
+*/
+
+desc:S&M - CC HiHat controller (v0.4) - Click edit for info
+
+/*/////////////////////////////////////////////////////////////////////////////
+
+
+CC HiHat controller
+
+
+Abstract:
+This JS allows e-drummers to re-map incoming hit hat notes depending on how
+they groove on their foot pedal. Even a single incoming note can be used to
+trigger 6 hit hat sounds (1 closed + 5 opened hit hat sounds).
+
+
+General info:
+- The typical config. for this JS is: e-drum -> Reaper/this JS -> drums VSTi
+- 6 levels: the 1st level is usually a closed hit hat sound and the 5 other levels
+  opened hit hat sounds (drums VSTis often provide 5 open hit hat sounds)
+- Default INPUT settings = Roland TD-3 ones
+  THE DEFAULT CC VALUE RANGES AND MORE PATTICULARY THE 1ST ONE (closed hit hat)
+  ARE FOR A FAULTY PEDAL (unreachable CC value 0)
+- Default OUTPUT settings = Addictive drums, default kit.
+- Pass thru for unmapped midi events (see other pass-thru properties bellow)
+  => other fx can be used for further mappings (kick, snare, ...)
+- Related reaper's thread: http://forum.cockos.com/showthread.php?t=37580
+
+
+Settings:
+- Output channel: for output notes routing
+  Remarks:
+  * unmapped events pass thru with their original channels
+  * several instances of this fx can used in the same FX chain with different input/output channels
+- Input channel: usually the e-drum one
+- Input note mode: specifies how the 4 following fields are used (or ignored)
+- Input note 1 (or start of range):
+  * Start of input note range if 'Input note mode' = 'Range (between notes 1 & 2 - others ignored)'
+  * 1st e-drum input note if 'Input note mode' = 1,2,3 or 4 input note(s)
+- Input note 2 (or end of range):
+  * End of input note range if 'Input note mode' = 'Range (between notes 1 & 2 - others ignored)'
+  * 2nd input note if 'Input note mode' = 2,3 or 4 input notes
+- Input note 3: 3rd input note if 'Input note mode' = 3 or 4 input notes
+- Input note 4: 4th input note if 'Input note mode' =  4 input notes
+- Input pedal CC#: pedal control change number, usually '4' (Foot pedal MSB)
+  Remark:
+  all CC events pass thru with their original channels - even if mapped (for multiple JS instances)
+- Reverse CC values: use this setting if 'opened' hits sound as 'closed' ones and vis-et-versa.
+  Some pedals indeed send '0' and some send '127' for the same max open hit hat position!)
+- LEVEL 1
+  - Min. CC value: see below
+    Remark: if this value is > 0, input notes with lower CC values will NOT be mapped (pass thru)
+  - Max. CC value: an input note received with a CC value included between the level 1's Min. CC value
+    and Max. CC value will trigger the level 1's output note.
+  - Output note: the VSTi one. Level's 1 output note is usually a closed hit hat sound.
+    Remark: when less than 6 levels are needed, a same output note may be duplicated in several levels.
+- LEVEL n
+  - Max. CC value: an input note received with a CC value included between the level (n-1) 'Max. CC value'
+    and THIS 'Max. CC value' will trigger the level n's output note.
+    Remark: this value is automatically corrected as CC ranges should be contiguous.
+  - Output note: usually the VSTi one
+    Remark: when less than 6 levels are needed, a same output note may be duplicated in several levels.
+- LEVEL 6
+  - Max. CC value: an input note received with a CC value included between the level 5 'Max. CC value'
+    and THIS 'Max. CC value' will trigger the level 6's output note.
+    Remarks:
+    * this value is automatically corrected as CC ranges are contiguous.
+    * if this value is < 127, input notes with upper CC values will NOT be mapped (pass thru)
+  - Output note: usually the VSTi one. Level's 6 output note is usually an open hit hat sound.
+    Remark: when less than 6 levels are needed, a same output note may be duplicated in several levels.
+- Filter (matching) Note-off events: once an input note has been remapped, this parameter allows you
+  to filter the related Note-off ("Yes", default) or to remap it as well ("No").
+  "No" is useful when working with ReaSamplOmatic5000 rather than dedicated drums VSTis (like EZDrummer, 
+  Addictive Drums, etc..) for ex.
+  See http://forum.cockos.com/showpost.php?p=1278385&postcount=28 too.
+  Remark: new parameter introduced in v0.4
+
+Example (typical set-up for TD-3):
+Same open hit hat sounds for edge & bow hits BUT 2 different closed hit hat sounds,
+one for closed hit hat EDGE hits and one for closed hit hat BOW hits.
+Here the source e-drum hardware is able to send 4 different notes for the hit hat:
+closed bow, opened bow, closed edge and opened bow.
+1) create a 1st track armed with the e-drum's midi input / midi channel (say ch. 10).
+   In the FX chain, add:
+   * 1 instance of this JS in "2 input notes" mode: the 2 first input note fields are filled with
+     edge opened & edge closed input notes.
+     The input channel is set to 10. The output channel is set to 12.
+     The CC ranges are set according to the e-drum's pedal properties.
+   * 1 instance in "2 notes" mode: the 2 first input note fields are filled with bow opened and
+     bow closed input notes. Same other settings than the 1st fx instance -execpt the level 1's
+     output note that should differ (= the VSTi's closed EDGE -OR- BOW input notes).
+2) create a 2nd track. Add drum VSTi FX. Add a receive: track 1 midi events on channel 12.
+3) let's groove
+
+Remark: in this example, all open hit hat notes sent by the e-drum are ignored.
+It's up to the JS to handle that according to the foot pedal position.
+
+/////////////////////////////////////////////////////////////////////////////*/
+
+
+
+slider1:11<0,15,1{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}>Output channel:
+slider2:9<0,15,1{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}>Input channel:
+
+slider3:4<0,4,1{Range (between notes 1 & 2 - others ignored),1 input note (2-3-4 ignored),2 input notes (3-4 ignored),3 input notes (4 ignored),4 input notes}>Input note mode:
+slider4:22<0,127,1>Input note 1 (or start of range):
+slider5:26<0,127,1>Input note 2 (or end of range):
+slider6:42<0,127,1>Input note 3:
+slider7:46<0,127,1>Input note 4:
+
+slider8:4<0,127,1{0 Bank Sel M,1 Mod Wheel M,2 Breath M,3,4 Foot P M,5 Porta M,6 Data Entry M,7 Vol M,8 Balance M,9,10 Pan M,11 Expression M,12 Ctrl 1 M,13 Ctrl 2 M,14,15,16 GP Slider 1,17 GP Slider 2,18 GP Slider 3,19 GP Slider 4,20,21,22,23,24,25,26,27,28,29,30,31,32 Bank Sel L,33 Mod Wheel L,34 Breath L,35,36 Foot P L,37 Porta L,38 Data Entry L,39 Vol L,40 Balance L,41,42 Pan L,43 Expression L,44 Ctrl 1 L,45 Ctrl 2 L,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64 Hold P sw,65 Porta sw,66 Sustenuto sw,67 Soft P sw,68 Legato P sw,69 Hold 2 P sw,70 S.Variation,71 S.Timbre,72 S.Release,73 S.Attack,74 S.Brightness,75 S.Ctrl 6,76 S.Ctrl 7,77 S.Ctrl 8,78 S.Ctrl 9,79 S.Ctrl 10,80 GP B.1 sw,81 GP B.2 sw,82 GP B.3 sw,83 GP B.4 sw,84,85,86,87,88,89,90,91 Effects Lv,92 Trem Lv,93 Chorus Lv,94 Celeste Lv,95 Phaser Lv,96 Data B. Inc,97 Data B. Dec,98 NRP L,99 NRP M,100 RP L,101 RP M,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127}>Input pedal CC#:
+slider9:1<0,1,1,{false,true}>Reverse CC values:
+
+slider10:0<0,127,1>LEVEL 1 - Min. CC value:
+slider11:92<0,127,1>Max. CC value:
+slider12:49<0,127,1>Output note (usually closed HH):
+
+slider21:107<0,127,1>LEVEL 2 - Max. CC value:
+slider22:54<0,127,1>Output note:
+
+slider31:112<0,127,1>LEVEL 3 - Max. CC value:
+slider32:55<0,127,1>Output note:
+
+slider41:117<0,127,1>LEVEL 4 - to CC value:
+slider42:56<0,127,1>Output note:
+
+slider51:122<0,127,1>LEVEL 5 - Max. CC value:
+slider52:57<0,127,1>Output note:
+
+slider61:127<0,127,1>LEVEL 6 - Max. CC value:
+slider62:57<0,127,1>Output note (usually max. opened HH):
+
+slider64:1<0,1,1{No,Yes}>Filter (matching) Note-off events:
+
+///////////////////////////////////////////////////////////////////////////////
+@init
+HH_OPEN_LEVELS=6;
+sNOTE_OFF   = 8 * 16;
+sNOTE_ON    = 9 * 16;
+sCC         = 11 * 16;
+lvlOutNote = 0;
+ccOutNote  = HH_OPEN_LEVELS;
+
+///////////////////////////////////////////////////////////////////////////////
+@slider
+OUT_CHANNEL = slider1|0;
+IN_CHANNEL = slider2|0;
+IN_MODE = slider3|0;
+
+IN_CC = slider8 | 0;
+slider9 ? lasthhcc=127 : lasthhcc=0;
+
+// Check settings (auto update if invalid)
+!IN_MODE && slider5 <= slider4 ? slider5 = min(127,slider4)|0;
+IN1_MIN_NOTE = slider4|0;
+IN2_MAX_NOTE = slider5|0;
+IN3_NOTE = slider6|0;
+IN4_NOTE = slider7|0;
+
+slider11 <= slider10 ? slider11 = min(127,slider10+1)|0;
+slider20 = min(127,slider11+1)|0;
+
+slider21 <= slider20 ? slider21 = min(127,slider20)|0;
+slider30 = min(127,slider21+1)|0;
+
+slider31 <= slider30 ? slider31 = min(127,slider30)|0;
+slider40 = min(127,slider31+1)|0;
+
+slider41 <= slider40 ? slider41 = min(127,slider40)|0;
+slider50 = min(127,slider41+1)|0;
+
+slider51 <= slider50 ? slider51 = min(127,slider50)|0;
+slider60 = min(127,slider51+1)|0;
+
+slider61 <= slider60 ? slider61 = min(127,slider60)|0;
+
+memset(lvlOutNote, -1, HH_OPEN_LEVELS);
+lvlOutNote[0] = slider12|0;
+lvlOutNote[1] = slider22|0;
+lvlOutNote[2] = slider32|0;
+lvlOutNote[3] = slider42|0;
+lvlOutNote[4] = slider52|0;
+lvlOutNote[5] = slider62|0;
+
+memset(ccOutNote, -1, 128);
+i=slider10; while(ccOutNote[i]=lvlOutNote[0]; i+=1; i <= slider11);
+i=slider20; while(ccOutNote[i]=lvlOutNote[1]; i+=1; i <= slider21);
+i=slider30; while(ccOutNote[i]=lvlOutNote[2]; i+=1; i <= slider31);
+i=slider40; while(ccOutNote[i]=lvlOutNote[3]; i+=1; i <= slider41);
+i=slider50; while(ccOutNote[i]=lvlOutNote[4]; i+=1; i <= slider51);
+i=slider60; while(ccOutNote[i]=lvlOutNote[5]; i+=1; i <= slider61);
+
+///////////////////////////////////////////////////////////////////////////////
+@block
+while
+(
+  midirecv(ts,msg1,msg23) ?
+  (
+    mapped1=-1;
+    (msg1&15) == IN_CHANNEL ?
+    (
+        event=msg1&240;
+        data1=msg23&127;
+        data2=(msg23/256) & 127;
+        (event==sNOTE_ON || event==sNOTE_OFF) ? (
+            (!IN_MODE && data1>=IN1_MIN_NOTE && data1<=IN2_MAX_NOTE) ||
+            (IN_MODE == 1 && data1==IN1_MIN_NOTE) ||
+            (IN_MODE == 2 && (data1==IN1_MIN_NOTE || data1==IN2_MAX_NOTE)) ||
+            (IN_MODE == 3 && (data1==IN1_MIN_NOTE || data1==IN2_MAX_NOTE || data1==IN3_NOTE)) ||
+            (IN_MODE == 4 && (data1==IN1_MIN_NOTE || data1==IN2_MAX_NOTE || data1==IN3_NOTE || data1==IN4_NOTE)) ?
+            (
+              mapped1=ccOutNote[lasthhcc];
+
+              // filter note-off?
+              (slider64 && (event==sNOTE_OFF || (event==sNOTE_ON && !data2))) ? mapped1=-2;
+            );
+        )
+        :
+        (event==sCC && data1==IN_CC) ? (
+          slider9 ? lasthhcc=127-data2 : lasthhcc=data2;
+        );
+        mapped1 >= 0 ? midisend(ts, event + OUT_CHANNEL, mapped1 | (data2*256));
+    );
+    mapped1 == -1 ? midisend(ts,msg1,msg23);
+    1;
+  );
+);
+

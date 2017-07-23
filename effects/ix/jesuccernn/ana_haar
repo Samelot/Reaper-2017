@@ -1,0 +1,58 @@
+desc:ana_haar :: ccernn.2009 :: v0.0.3
+// todo: ana_ihaar
+slider1:10<2,15,1>bits
+slider2:0<0,63,1>signal input
+slider3:1<0,63,1>analysis output
+slider4:-1<-1,63,1>sync output
+@init
+  writebuf    = (64*1024) * 0;
+  haarbuf     = (64*1024) * 1;
+  avgbuf      = (64*1024) * 2;
+  diffbuf     = (64*1024) * 3;
+  pos = 0;
+@slider
+  bits     = slider1;
+  size     = 2^bits;
+  pos      = 0;
+  anain = slider2;
+  anaout = slider3;
+  sync = slider4;
+@sample
+  in = spl(anain);
+  writebuf[pos] = in;
+  out = haarbuf[pos];
+  sout = 0;
+  pos += 1;
+  pos >= (size) ?
+  (
+    pos = 0;
+    sout = 0.95;
+    memcpy(haarbuf,writebuf,size);
+    //--- do haar
+    count = size;
+    while
+    (
+      i = 0;
+      while
+      (
+        avgbuf[i]  = (haarbuf[2*i] + haarbuf[2*i + 1]) / 2;
+        diffbuf[i] =  haarbuf[2*i] - avgbuf[i];
+        i += 1;
+        i < (count/2);
+      );
+      i = 0;
+      while
+      (
+        haarbuf[i] = avgbuf[i];
+        haarbuf[i + count/2] = diffbuf[i];
+        i += 1;
+        (i < count/2);
+      );
+      count = count / 2;
+      count > 1;
+    );
+    //---
+  );
+  spl(anaout) = out;
+  sync>=0 ? spl(sync) = sout;
+

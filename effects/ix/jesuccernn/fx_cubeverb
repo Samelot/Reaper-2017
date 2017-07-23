@@ -1,0 +1,76 @@
+desc:fx_cubeverb :: ccernn.2009 :: v0.0.1
+// This effect Copyright (C) 2004 and later Zeven Sound Technology
+// 23/01/2005 - Added multichannel support
+// ccernn : adapted to reaper
+// desc: ZST 1-Channel Cube-type reverb #2
+slider1:0<0,1,0.01>dummy
+slider2:.05<0,1,0.001>Reverb Material Low-Cut
+slider3:.25<0,1,0.01>Reverb Material Resonance
+slider4:50<0,1000,1>Reverb Delay (ms) 
+slider5:0<-99,0,0.5>Reverb Decay (dB)
+slider6:0<-99,6,.5>Wet Mix (dB)
+slider7:0<-99,6,.5>Dry Mix (dB)
+slider8:0<0,180,5>Phase (Degrees)
+@init
+  rp0p = 0;
+  rp1p = 0;
+  rp2p = 0;
+  splbuf_L = 0;
+  splbuf_R = 500000;
+@slider
+  dummy  = slider1;
+  notch1 = slider2;
+  wet    = 2^(slider6/6);
+  dry    = 2^(slider7/6)-1;
+  phase  = cos((slider8/180)*$pi);
+  decay  = (2^(slider5/6))/3;
+  mat1   = slider3;
+  mat2   =  mat1^2;
+  mat3   = mat1^3;
+  size1  = slider4*.001;
+  size2  = (size1^2 * 2) ^ .5;
+  size3  = (size1^2 * 3) ^ .5;
+  ss0    = size1 * srate;
+  ss0h   = floor(ss0*.5);
+  ss1    = size2 * srate;
+  ss1h   = floor(ss1*.5);
+  ss2    = size3 * srate;
+  ss2h   = floor(ss2*.5);
+  rev0_L = 0;
+  rev1_L = 0;
+  rev2_L = 0;
+  rev0_R = 0;
+  rev1_R = 0;
+  rev2_R = 0;
+@sample
+  revin_L = spl0;
+  d_L     = d_L + (revin_L-d_L) * notch1;
+  s_L     = revin_L - d_L;
+  out_L   = splbuf_L[rp0*3] + splbuf_L[rp1*3+1] + splbuf_L[rp2*3+2];
+  out2_L  = splbuf_L[(rp0+ss0h)%ss0*3] + splbuf_L[(rp1+ss1h)%ss1*3+1] + splbuf_L[(rp2+ss2h)%ss2*3+2];
+  feed_L  = out_L * decay + s_L;
+  rev0_L  += (feed_L - rev0_L) * mat1;
+  rev1_L  += (feed_L - rev1_L) * mat2;
+  rev2_L  += (feed_L - rev2_L) * mat3;
+  splbuf_L[rp0*3  ] = rev0_L;
+  splbuf_L[rp1*3+1] = rev1_L;
+  splbuf_L[rp2*3+2] = rev2_L;
+  finalmix_L = (revin_L + out2_L * phase) * wet + revin_L * dry;
+  spl0 = finalmix_L;
+  revin_R = spl1;
+  d_R     = d_R + (revin_R-d_R) * notch1;
+  s_R     = revin_R - d_R;
+  out_R   = splbuf_R[rp0*3] + splbuf_R[rp1*3+1] + splbuf_R[rp2*3+2];
+  out2_R  = splbuf_R[(rp0+ss0h)%ss0*3] + splbuf_R[(rp1+ss1h)%ss1*3+1] + splbuf_R[(rp2+ss2h)%ss2*3+2];
+  feed_R  = out_R * decay + s_R;
+  rev0_R  += (feed_R - rev0_R) * mat1;
+  rev1_R  += (feed_R - rev1_R) * mat2;
+  rev2_R  += (feed_R - rev2_R) * mat3;
+  splbuf_R[rp0*3  ] = rev0_R;
+  splbuf_R[rp1*3+1] = rev1_R;
+  splbuf_R[rp2*3+2] = rev2_R;
+  finalmix_R = (revin_R + out2_R * phase) * wet + revin_R * dry;
+  spl1 = finalmix_R;
+  (rp0 += 1) >= ss0 ? rp0 = 0;
+  (rp1 += 1) >= ss1 ? rp1 = 0;
+  (rp2 += 1) >= ss2 ? rp2 = 0;

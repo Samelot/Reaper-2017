@@ -1,0 +1,69 @@
+desc: IX GUI system example
+
+import ../IX/ixgui.jsfx-inc
+
+// GUI control images (ignored if layout is being loaded from a data file)
+filename:0,../IX/gfx1/background.png
+filename:1,../IX/gfx1/button.png
+filename:2,../IX/gfx1/knob.png
+filename:3,../IX/gfx1/rotary.png
+filename:4,../IX/gfx1/hslider.png
+filename:5,../IX/gfx1/vslider.png
+filename:6,../IX/gfx1/meter1.png
+
+@init
+ext_noinit = 1;
+
+// Init(base address, num pages, image)
+// The image contains the backgrounds for all the pages
+gui.Init(0, 3, 0);
+
+// All new elements will have the hover and disable overlays
+gui.SetHoverDefault(1);
+gui.SetDisableDefault(1);
+
+// Arguments for AddWhatever() are mostly: left, top, image, value, numstates, page (-1 == global, 0 == current)
+// page argument is optional (defaults to current page)
+// left, top and image are ignored if layout is loaded from a data file.
+pgbtn = gui.AddButton(215, 205, 1, 0, 3, 0); // Global page change button
+
+// Page 1 elements (page 1 is already active)
+
+// p1.knob = gui.AddKnob(390, 80, 2, 0, 32);
+// p1.rotary = gui.AddRotary(10, 80, 3, 0, 32);
+// p1.mtx = gui.AddMatrix(gui.types.BUTTON, 70, 50, 1, 0, 3, 4, 10); // args: type, l, t, img, val, nstates, rows, cols (, page)
+
+// Now all controls have been added, find where the gui memory ends.
+limit = gui.GetUpperBounds();
+
+gui.SetPage(0); // Current page is the last added so jump to page 1
+
+@sample
+// Get gain value from slider and modify output
+gain = gui.GetState(p2.slider);
+spl0 *= gain;
+spl1 *= gain;
+
+// Update meters
+gui.SetState(p2.meterL, spl0);
+gui.SetState(p2.meterR, spl1);
+
+@gfx 460 240
+gui.Refresh(); // Do GUI processing
+
+// Check for an event. If non-zero, it holds the address of the element that was manipulated.
+gui.event ?
+(
+	gfx_printf(" .. Moving");
+	gui.event == pgbtn ? (
+  		gui.NextPage();
+	); // Cycle pages when page button is clicked
+
+  	gui.event == p1.mtx ? (
+    	tmp = gui.GetState(p1.mtx); // Find which element was clicked. The matrix value is the address of the child element.
+    	v = gui.GetState(tmp);    // Get state of clicked child element
+  	);
+);
+
+
+

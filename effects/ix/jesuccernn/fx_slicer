@@ -1,0 +1,254 @@
+desc:fx_slicer :: ccernn.2009 :: v0.0.10
+
+//--------------------------------------------------
+
+slider1: 1  < 0,    1,   1    {record,play} > mode
+slider2: 2  < 0,    16,  0.01 > attack
+slider3: 32 < 0,    64,  0.01 > decay
+slider4: 1  < 0,    2,   0.01 > speed/pitch
+slider5: 0  < 0,    1,   1    {no,yes} > save audio/slices in project
+slider6: 0  < 0,    128, 1    > num notes (read-only)
+slider7: 0  < 0, 8000000,1    > buffer size (read-only)
+slider8: 0  < 0,    2,   1    {off,slices,all} > draw mode
+
+//--------------------------------------------------
+@init
+//--------------------------------------------------
+_____init_____ = 0;
+
+  // to avoid having the recorded buffer and slice
+  // positions cleared every time we start/stop
+  ext_noinit = 1;
+
+  EVENTS     = $x00000;
+  SLICELIST  = $x08000;
+  NOTEMAP    = $x10000;
+  BUFFER     = $x20000;
+  div16      = 1/16;
+  inv127     = 1/127;
+  div256     = 1/256;
+
+  bufsize    = 0;
+  numnotes   = 0;
+  running    = 0;
+  playing    = 0;
+  redraw     = 0;
+
+//--------------------------------------------------
+@serialize
+//--------------------------------------------------
+
+  savedata ? (
+    // save buffer & notemap with project file
+    file_var(0,numnotes);
+    file_mem(0,NOTEMAP,128*2);
+    file_mem(0,SLICELIST,128);
+    file_var(0,bufsize);
+    file_mem(0,BUFFER,bufsize*2);
+  );
+
+//--------------------------------------------------
+@slider
+//--------------------------------------------------
+_____slider_____ = 0;
+
+  mode      = slider1;
+  attack    = 1 / max(1,slider2*slider2*slider2);
+  decay     = 1 / max(1,slider3*slider3*slider3);
+  speed     = slider4;
+  savedata  = slider5;
+  // slider 6/7 = numnotes/bufsize (readonly)
+  drawmode  = slider8;
+
+  speed < 1 ? speed = 0.5 + (speed*0.5);
+//--------------------------------------------------
+@block
+//--------------------------------------------------
+_____block_____ = 0;
+
+  numnotes != slider6 ? (
+    slider6 = numnotes;
+    sliderchange(slider6);
+  );
+  bufsize != slider7 ? (
+    slider7 = bufsize;
+    sliderchange(slider7);
+  );
+  
+  //----------
+
+  // clear all memory
+  trigger ? (
+    memset(NOTEMAP,0,128*2);
+    memset(SLICELIST,0,128);
+    memset(BUFFER, 0,bufsize*2);
+    numnotes = 0;
+    bufsize = 0;
+    redraw=1;
+  );
+  
+  //----------
+
+  play_state&1 ? (
+    !running ? (
+      running   =  1;
+      playing   =  0;
+      note      = -1;
+      vel       =  0;
+      pos       =  0;
+      end       =  0;
+      mode==0 ? (
+        bufsize   =  0;
+        numnotes  =  0;
+      );
+      prevnote  = -1;
+    );
+  ) : ( // playstate
+    running ? (
+      prevnote>=0 ? NOTEMAP[prevnote+128] = pos;
+      mode=1;
+      slider1 = mode;
+      sliderchange(slider1);
+    );
+    running = 0;
+  ); // playstate
+  
+  //----------
+
+  memset(EVENTS,-1,samplesblock);
+  while(
+    midirecv(ofs,msg1,msg23) ? (
+      //chan = msg1 & 0x0f;
+      msg = (msg1 & $xf0) * div16;
+      note = msg23 & $x7f;
+      vel = (msg23*div256) & $x7f;
+      (msg==9) ? (
+        EVENTS[ofs] = note;
+        EVENTS[ofs+samplesblock] = vel*inv127;
+      );
+      midisend(ofs,msg1,msg23);
+    );
+  );
+  
+  //----------
+
+  offset = 0;
+  //bufsize = beats*srate*60/tempo;
+  
+//--------------------------------------------------
+@sample
+//--------------------------------------------------
+_____sample_____ = 0;
+
+  EVENTS[offset] >= 0 ? (
+    note = EVENTS[offset];
+    vel  = EVENTS[offset+samplesblock];
+    ((note>=0)&&(note<=127)) ? (
+      playing = 1;
+      volume = vel;
+      attack_n = 0;
+      decay_n = 1;
+      mode==0 ? (
+        prevnote >= 0 ? NOTEMAP[prevnote+128] = pos;
+        prevnote = note;
+        NOTEMAP[note] = pos;
+        SLICELIST[numnotes] = pos;
+        numnotes += 1;
+      ) :
+      mode==1 ? (
+        pos = NOTEMAP[note];
+        end = NOTEMAP[note+128];
+      );
+    ) : ( // 0..127
+      playing = 0;
+    );
+
+  ); // event?
+  EVENTS[offset] = -1;
+  offset += 1;  
+
+  //----------
+
+  in0 = out0 = spl0;
+  in1 = out1 = spl1;
+
+  //----------
+
+  playing ? (
+    p2 = 2 * (pos|0);
+    mode==0 ? (
+      BUFFER[p2]   = in0;
+      BUFFER[p2+1] = in1;
+      pos += 1;
+      bufsize += 1;
+    ) :
+    mode==1 ? (
+      out0 = BUFFER[p2];
+      out1 = BUFFER[p2+1];
+      pos += speed;
+      pos>=end ? playing=0;
+    );
+    mult = volume * attack_n * decay_n;
+    attack_n += (1-attack_n) * attack;
+    decay_n  += (0-decay_n)  * decay;
+    spl0 = out0 * mult;
+    spl1 = out1 * mult;
+  );
+
+//--------------------------------------------------
+@gfx
+//--------------------------------------------------
+_____gfx_____ = 0;
+
+  gfx_clear = 0;
+  (bufsize>0) || (redraw) ? (
+
+    // slices
+
+    drawmode > 0 ? (
+      gfx_r=0.5; gfx_g=0.0; gfx_b=0.0; gfx_a=1; 
+      SL = SLICELIST;
+      loop( numnotes,
+        x = SL[] / bufsize * gfx_w;
+        gfx_x = x;
+        gfx_y = (gfx_h*0.05);
+        gfx_lineto(x,gfx_h*0.95,0);
+        SL += 1;
+      );
+    );
+
+    // audio
+
+    drawmode > 1 ? (
+      gfx_r=.5; gfx_g=.5; gfx_b=.5; gfx_a=1; 
+      h2 = gfx_h * 0.5;
+      gfx_x = 0;
+      gfx_y = h2;
+      i = x = 0;
+      xadd = bufsize / gfx_w;
+      loop (gfx_w,
+        n = ( BUFFER[(x*2)] + BUFFER[(x*2)+1] ) * 0.5;
+        y = h2 - (n*h2);
+        //gfx_x = i;
+        //gfx_y = h2;
+        gfx_lineto(i,y,0);
+        x += xadd;
+        i += 1;
+      );
+    );
+
+    // cursor
+
+    drawmode > 0 ? (
+      gfx_r=0; gfx_g=1; gfx_b=0; gfx_a=1; 
+      x = pos / bufsize * gfx_w;
+      gfx_x = x;
+      gfx_y = 0;
+      gfx_lineto(x,gfx_h,0);
+    );
+
+    redraw=0;
+  ); // bufsize>0
+
+//--------------------------------------------------
+_____end_____ = 0;

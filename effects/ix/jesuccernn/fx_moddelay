@@ -1,0 +1,70 @@
+desc:fx_moddelay :: ccernn.2009 :: v0.0.1
+
+slider1: 60 <0,500, .01 > delay (ms)
+slider2: 15 <0,100, .01 > mod depth (ms)
+slider3: .5 <0,4,   .01 > mod rate (hz)
+slider4: .75<0,1,   .01 > dry
+slider5: .75<0,1,   .01 > wet
+slider6: 0  <0,2,1{add,sub,mul}> combine
+slider7: 2  <1,10,  1   > num taps
+slider8: .2 <0,1,   .01 > tap phase diff
+
+@slider
+
+  delay = (slider1/1000) * srate;
+  depth = (slider2/1000) * srate;
+  rate  =  slider3;
+  dry   =  slider4*slider4;
+  wet   =  slider5*slider5;
+  comb  =  slider6;
+  taps  =  slider7*slider7;
+  phdif =  slider8;
+  rate>0 ? phadd=rate/srate : phadd=0;
+  //wet /= taps;
+
+@init
+
+  MAXDELAY = srate;
+  BUFFER = 1000;
+  PI2 = $pi*2;
+  ph = 0;
+
+@sample
+
+  BUFFER[index] = spl0;
+  BUFFER[index+MAXDELAY] = spl1;
+  index += 1;
+  index >= MAXDELAY ? index=0; //index-=MAXDELAY;
+
+  p = ph;
+  out0 = out1 = 0;
+
+  loop( taps,
+
+    de = index - delay + (depth*sin(p*PI2));
+    de<0 ? de+=MAXDELAY;
+    de>=MAXDELAY ? de-=MAXDELAY;
+
+    comb==0 ? (
+      out0 += BUFFER[de];
+      out1 += BUFFER[de+MAXDELAY];
+    ) :
+    comb==1 ? (
+      out0 -= BUFFER[de];
+      out1 -= BUFFER[de+MAXDELAY];
+    ) :
+    comb==2 ? (
+      out0 *= BUFFER[de];
+      out1 *= BUFFER[de+MAXDELAY];
+    );
+
+    p += phdif;
+    p>=1 ? p-=1;
+
+  );
+
+  ph += phadd;
+  ph>=1 ? ph-=1;
+
+  spl0 = (spl0*dry) + (out0*wet);
+  spl1 = (spl1*dry) + (out1*wet);

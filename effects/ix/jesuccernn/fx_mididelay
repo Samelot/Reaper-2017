@@ -1,0 +1,61 @@
+desc:fx_mididelay :: ccernn.2009 :: v0.01
+slider1:  500  <1,1000,1> max delay (ms)
+slider2:  1    <1,100>    speed;
+slider3:  0.8  <0,1>      dry;
+slider4:  0.8  <0,1>      wet;
+slider5:  0.1  <0,1>      delay base
+slider6:  0.7  <0,1>      delay scale
+slider7:  60   <0,127,1>  delay CC
+slider8:  0.1  <0,1>      feedback base
+slider9:  0.9  <0,1>      feedback scale
+slider10: 61   <0,127,1>  feedback CC
+@init
+  BUFFER = 1000;
+  delay_t = 0;
+  delay = 0;
+  feedback_t = 0;
+  feedback = 0;
+@slider
+  maxdelay  = (slider1/1000)*srate;
+  speed     = 1/(slider2*slider2);
+  dry       = slider3;
+  wet       = slider4;
+  del_base  = slider5;
+  del_scale = slider6;
+  del_cc    = slider7;
+  fb_base   = slider8;
+  fb_scale  = slider9;
+  fb_cc     = slider10;
+@block
+  //TODO: sample-accurate, use offset!
+  while (
+    midirecv(offset,msg1,msg23) ? (
+      msg = msg1 & 240;
+      (msg == 11*16) ? ( // cc
+        cc  = (msg23&127);
+        val = ((msg23/256)|0) / 127;
+        cc==del_cc ? delay_t    = val;
+        cc==fb_cc  ? feedback_t = val;
+      );
+      midisend(offset,msg1,msg23);
+    );
+  );
+@sample
+  delay += (delay_t -delay) * speed;
+  cur_del = del_base + (delay * del_scale);
+  cur_del = min(max(cur_del,0),1);
+  feedback += (feedback_t-feedback) * speed;
+  cur_fb = fb_base  + (feedback * fb_scale);
+  cur_fb = min(max(cur_fb,0),1);
+  //
+  dindex = index - (cur_del*maxdelay);
+  dindex<0 ? dindex+=maxdelay;
+  //dindex>=maxdelay ? dindex-=maxdelay;
+  out0 = BUFFER[ dindex*2   ];
+  out1 = BUFFER[(dindex*2)+1];
+  BUFFER[(index*2)  ] = spl0 + (out0*cur_fb);
+  BUFFER[(index*2)+1] = spl1 + (out1*cur_fb);
+  index+=1;
+  index >= maxdelay ? index -= maxdelay;
+  spl0 = (spl0*dry) + (out0*wet);
+  spl1 = (spl1*dry) + (out1*wet);

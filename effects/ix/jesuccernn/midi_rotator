@@ -1,0 +1,182 @@
+desc:midi_rotator :: ccernn.2009 :: v0.0.0
+
+slider1: -0.1 <-1, 1,  0.001 > speed
+slider2:  0   < 0, 1,  0.001 > angle
+slider3:  0.5 < 0, 2   0.001 > scale
+slider4:  5   < 1, 16, 1     > num balls
+slider5:  0.2 < 0, 1,  0.001 > ball size
+slider6:  8   < 1, 32, 1     > max notes
+slider7:  0.1 < 0, 1,  0.001 > note size
+slider8:  0   < 0, 1,  0.001 > note decay
+slider9:  0   <-1, 1,  0.001 > gravity
+slider10: 1   < 0, 1,  0.001 > bounce
+//slider9: 0   < 0, 2,  1 {none,floor,floor+walls} > borders
+
+@init
+
+  BALLS = 1000;
+  //_x = 0;
+  //_y = 1;
+  //_r = 2;
+  BALLSIZE = 3;
+
+  NOTES = 2000;
+  //_x = 0; // pos
+  //_y = 1;
+  //_n = 2; // alpha
+  //_dx= 3; // dir
+  //_dy= 4;
+  NOTESIZE = 5;
+
+  MAXNOTES = 32;
+
+  //numnotes = 0;
+  numnotes = 1;
+  NOTES[0] = 0.5;
+  NOTES[1] = 0.1;
+  NOTES[2] = 0.5;
+  NOTES[3] = 0.001;
+  NOTES[4] = 0.002;
+
+  PI2 = $pi*2;
+  ph = 0;
+
+@slider
+
+  speed     = (1/srate) * slider1;
+  angle     = slider2;
+  scale     = slider3;
+  numballs  = slider4;
+  bsize  = slider5;
+  maxnotes  = slider6;
+  nsize  = slider7;
+  notedecay = slider8;
+  gravity   = slider9;
+  bounce = slider10;
+
+@sample
+
+  ph += speed;
+  ph >= 1 ? ph -= 1;
+  ph <  0 ? ph += 1;
+
+@gfx
+
+  gfx_clear = 0;
+  gfx_a = 1;
+
+  w2 = gfx_w * 0.5;
+  h2 = gfx_h * 0.5;
+  wh = (w2+h2)*0.5;
+
+  // rotating balls
+
+  p = angle + ph;
+  padd = 1/numballs;
+  r=1; g=1; b=1;
+  BA = BALLS;
+  loop( numballs,
+    xx =  w2 + ( sin(p*PI2) * w2 ) * scale;
+    yy =  h2 + ( cos(p*PI2) * h2 ) * scale;
+    rr = bsize * wh;
+    BA[0] = xx;
+    BA[1] = yy;
+    BA[2] = rr;
+    BA += BALLSIZE;
+    // --- bresenham circle
+    rr>=1 ? (
+      f=1-rr; dx=1; dy=-2*rr; x=0; y=rr;
+      gfx_x=xx;    gfx_y=yy+rr; gfx_setpixel(r,g,b);
+      gfx_x=xx;    gfx_y=yy-rr; gfx_setpixel(r,g,b);
+      gfx_x=xx+rr; gfx_y=yy;    gfx_setpixel(r,g,b);
+      gfx_x=xx-rr; gfx_y=yy;    gfx_setpixel(r,g,b);
+      while( 
+        f>=0 ? ( y-=1; dy+=2; f+=dy; );
+        x+=1; dx+=2; f+=dx;    
+        gfx_x=xx-x; gfx_y=yy+y; gfx_setpixel(r,g,b);
+        gfx_x=xx+x; gfx_y=yy+y; gfx_setpixel(r,g,b);
+        gfx_x=xx-x; gfx_y=yy-y; gfx_setpixel(r,g,b);
+        gfx_x=xx+x; gfx_y=yy-y; gfx_setpixel(r,g,b);
+        gfx_x=xx-y; gfx_y=yy+x; gfx_setpixel(r,g,b);
+        gfx_x=xx+y; gfx_y=yy+x; gfx_setpixel(r,g,b);
+        gfx_x=xx-y; gfx_y=yy-x; gfx_setpixel(r,g,b);
+        gfx_x=xx+y; gfx_y=yy-x; gfx_setpixel(r,g,b);
+        x<y;
+      );
+    ) : (gfx_x=xx; gfx_y=yy; gfx_setpixel(r,g,b); );
+    // ---
+    p += padd;
+    //p>=1 ? p-=1;
+  );
+
+  // note balls
+
+  N = NOTES;
+  loop( numnotes,
+    r=1; g=0; b=0;
+    xpos = N[0];
+    ypos = N[1];
+    ampl = N[2];
+    xdir = N[3];
+    ydir = N[4];
+    xx = xpos * gfx_w;
+    yy = ypos * gfx_h;
+    rr = nsize * wh;
+    aa = ampl;
+    BA = BALLS;
+    loop( numballs,
+      dx = BA[0] - xx;
+      dy = BA[1] - yy;
+      dd = (dx*dx)+(dy*dy);
+      dd>0 ? dist=sqrt(dd) : dist=0;
+      dist <= (BA[2]+rr) ? (
+        r=0; g=1; b=0;
+        // N = sph -> note, normalize (/dist? rad? )
+        // reflect vecror ( V-=2*N*(N.V) ); N = normal
+      );
+      BA += BALLSIZE;
+    );
+
+    //ydir *= gravity;
+
+    r2 = (gfx_h-rr);
+    xx <  rr  ? xdir=-xdir*bounce;
+    xx >= r2  ? xdir=-xdir*bounce;
+
+    xpos += xdir;
+    ypos += ydir;
+    yy <  rr  ? ydir=-ydir*bounce;
+    yy >= r2  ? ydir=-ydir*bounce;
+    ydir += gravity;
+    
+    N[0] = xpos;
+    N[1] = ypos;
+    N[3] = xdir;
+    N[4] = ydir;
+
+    N += NOTESIZE;
+
+    gfx_a = aa;
+    // --- bresenham circle
+    rr>=1 ? (
+      f=1-rr; dx=1; dy=-2*rr; x=0; y=rr;
+      gfx_x=xx;    gfx_y=yy+rr; gfx_setpixel(r,g,b);
+      gfx_x=xx;    gfx_y=yy-rr; gfx_setpixel(r,g,b);
+      gfx_x=xx+rr; gfx_y=yy;    gfx_setpixel(r,g,b);
+      gfx_x=xx-rr; gfx_y=yy;    gfx_setpixel(r,g,b);
+      while(
+        f>=0 ? ( y-=1; dy+=2; f+=dy; );
+        x+=1; dx+=2; f+=dx;    
+        gfx_x=xx-x; gfx_y=yy+y; gfx_setpixel(r,g,b);
+        gfx_x=xx+x; gfx_y=yy+y; gfx_setpixel(r,g,b);
+        gfx_x=xx-x; gfx_y=yy-y; gfx_setpixel(r,g,b);
+        gfx_x=xx+x; gfx_y=yy-y; gfx_setpixel(r,g,b);
+        gfx_x=xx-y; gfx_y=yy+x; gfx_setpixel(r,g,b);
+        gfx_x=xx+y; gfx_y=yy+x; gfx_setpixel(r,g,b);
+        gfx_x=xx-y; gfx_y=yy-x; gfx_setpixel(r,g,b);
+        gfx_x=xx+y; gfx_y=yy-x; gfx_setpixel(r,g,b);
+        x<y;
+      );
+    ) : (gfx_x=xx; gfx_y=yy; gfx_setpixel(r,g,b); );
+    // ---
+  );

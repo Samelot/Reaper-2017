@@ -1,0 +1,213 @@
+desc:syn_reatalker :: ccernn.2009 :: v0.0.1
+// based on CompuTalker CT-1
+// http://web.inter.nl.net/hcc/davies/esp7cpt.html
+// additional info from
+// http://web.onetel.com/~hibou/Formant%20Speech%20Synthesizer.txt
+
+slider1:     0.5 <    0,    1, 0.01 > master.volume
+slider2:    80   <    0, 1000, 1    > voiced.freq  FV
+slider3:     1   <    0,    1, 0.01 > voiced.ampl  AV
+slider4:     0   <    0,    1, 0.01 > aspiration.ampl  AH
+slider5:     0   <    0,    1, 0.01 > nasal.ampl  AN
+slider6:     0   <    0,    1, 0.01 > fricative.ampl  AF
+slider7:  6000   <    0,20000, 1    > fricative.freq  FF
+slider8:   650   <  100, 1000, 1    > formant.freq 1  FR1
+slider9:  1300   <  500, 3000, 1    > 2  FR2
+slider10: 2050   < 1000, 4000, 1    > 3  FR3
+slider11:  100   <    0,  999, 0.01 > formant.bw 1  FB1
+slider12:  150   <    0,  999, 0.01 > 2  FB2
+slider13:  200   <    0,  999, 0.01 > 3  FB3
+slider14:    1   <    0,    1, 0.01 > formant.ampl 1  FA1
+slider15:    0.5 <    0,    1, 0.01 > 2  FA2
+slider16:    0.25<    0,    1, 0.01 > 3  FA3
+
+@init
+
+	// F1,F2,F3 = formant filters
+	// FN = nasal
+	// FF = fricative
+/*
+	F1_fr = 0;	// frequency (current)
+	F1_bw = 0;  // bandwidth
+	F1_am = 0;	// amplitude
+	F1_ff = 0;	// destination for slide
+	F1_bb = 0;
+	F1_aa = 0;
+	F1_z1 = 0;	// filter delay 1,2
+	F1_z2 = 0;
+  F1_x = 0;
+  F1_r = 0;
+  F1_a = 0;
+  F1_b = 0;
+  F1_c = 0;
+  F1_n = 0;		// filter out
+*/
+  Ta    = 1/srate;
+  PiTa  = $pi*Ta;
+  PiTa2 = Pita*2;
+  phase = 0;
+  speed = 5; // ms, should be a slider
+
+  // nasal
+  FN_fr = 1400;
+  FN_bw = 50;
+  FN_x  = -(PiTa*FN_bw);
+  FN_r  = (pow(2,FN_x*1.442695041));
+  FN_c  = -FN_r*FN_r;
+  FN_b  = FN_r*2*cos(PiTa2*FN_fr);
+  FN_a  = 1-FN_b-FN_c;
+
+  // fricative
+  FF_bw = 3000;
+  FF_x  = -(PiTa*FF_bw);
+  FF_r  = (pow(2,FF_x*1.442695041));
+  FF_c  = -FF_r*FF_r;
+
+@slider
+
+       master = slider1;
+
+          FV  = slider2;  // voice freq
+          AV  = slider3;  // voice
+          AH  = slider4;  // aspiration
+  FN_aa = AN  = slider5;  // nasal
+  FF_aa = AF  = slider6;  // fricative
+  FF_ff = FF  = slider7;  // fric freq
+  F1_ff = FR1 = slider8;  // formant filter freq 1
+  F2_ff = FR2 = slider9;  // filter 2..
+  F3_ff = FR3 = slider10; // ..and 3
+  F1_bb = FB1 = slider11; // bw
+  F2_bb = FB2 = slider12; // 
+  F3_bb = FB3 = slider13; //
+  F1_aa = FA1 = slider14; // ampl
+  F2_aa = FA2 = slider15; //
+  F3_aa = FA3 = slider16; //
+
+@sample
+
+  saw   = (phase*2)-1;
+  noise = rand(2)-1;
+  voice = (AV*saw) + (AH*noise);
+
+  speed>0 ? mul=Ta/(speed/1000) : mul=1;
+  out = 0;
+
+  in = voice;
+  F1_fr += (F1_ff-F1_fr)*mul;
+  F1_bw += (F1_bb-F1_bw)*mul;
+  F1_am += (F1_aa-F1_am)*mul;
+  F1_x = -(PiTa*F1_bw);
+  F1_r = (pow(2,F1_x*1.442695041));
+  F1_c = -F1_r*F1_r;
+  F1_b = F1_r*2*cos(PiTa2*F1_fr);
+  F1_a = 1-F1_b-F1_c;
+  F1_n  = (in*(F1_a*F1_am))+(F1_b*F1_z1)+(F1_c*F1_z2);
+  F1_z2 = F1_z1;
+  F1_z1 = F1_n;
+  out += F1_n;
+
+  //in = voice;
+  F2_fr += (F2_ff-F2_fr)*mul;
+  F2_bw += (F2_bb-F2_bw)*mul;
+  F2_am += (F2_aa-F2_am)*mul;
+  F2_x = -(PiTa*F2_bw);
+  F2_r = (pow(2,F2_x*1.442695041));
+  F2_c = -F2_r*F2_r;
+  F2_b = F2_r*2*cos(PiTa2*F2_fr);
+  F2_a = 1-F2_b-F2_c;
+  F2_n  = (in*(F2_a*F2_am))+(F2_b*F2_z1)+(F2_c*F2_z2);
+  F2_z2 = F2_z1;
+  F2_z1 = F2_n;
+  out += F2_n;
+
+  //in = voice;
+  F3_fr += (F3_ff-F3_fr)*mul;
+  F3_bw += (F3_bb-F3_bw)*mul;
+  F3_am += (F3_aa-F3_am)*mul;
+  F3_x = -(PiTa*F3_bw);
+  F3_r = (pow(2,F3_x*1.442695041));
+  F3_c = -F3_r*F3_r;
+  F3_b = F3_r*2*cos(PiTa2*F3_fr);
+  F3_a = 1-F3_b-F3_c;
+  F3_n  = (in*(F3_a*F3_am))+(F3_b*F3_z1)+(F3_c*F3_z2);
+  F3_z2 = F3_z1;
+  F3_z1 = F3_n;
+  out += F3_n;
+
+  //in = nasal;
+  FN_am += (FN_aa-FN_am)*mul;
+  FN_n  = (in*(FN_a*FN_am))+(FN_b*FN_z1)+(FN_c*FN_z2);
+  FN_z2 = FN_z1;
+  FN_z1 = FN_n;
+  out += FN_n;
+
+  in = noise;//fric;
+  FF_fr += (FF_ff-FF_fr)*mul;
+  FF_am += (FF_aa-FF_am)*mul;
+  FF_b = FF_r*2*cos(PiTa2*FF_fr);
+  FF_a = 1-FF_b-FF_c;
+  FF_n  = (in*(FF_a*FF_am))+(FF_b*FF_z1)+(FF_c*FF_z2);
+  FF_z2 = FF_z1;
+  FF_z1 = FF_n;
+  out += FF_n;
+
+  out *= 0.2;
+  spl0 = spl1 = (out*master);
+  phase += (FV/srate);
+  phase>=1 ? phase-=1;
+
+//----------
+
+/*
+
+found this in a preview
+on google.books or something
+
+p - phoneme
+f - frequency
+r - bandwrth, q, what?
+n - nasal
+f - fricative
+v - voiced
+
+p    f1  r1   f2  r2   f3  r3 n f v
+-----------------------------------
+vowels
+i   270  75 2290  75 3010 150 - - +
+I   390  75 1990  75 2550 110 - - +
+e   530  75 1840  80 2480 110 - - +
+æ   660  75 1720  75 2410 110 - - +
+A   520  75 1190  75 2390  75 - - +
+a   730  37 1090  75 2440 115 - - +
+    570  75  840  75 2410 115 - - +
+    440  75 1020  75 2240  90 - - +
+u   300  75  870  80 2240  90 - - +
+    490  75 1350  80 1690 100 - - +
+semi-viwels
+w   300  25  610  40 2200 150 - - +
+j   300  25 2200 110 3065 200 - - +
+liquids
+l   380  25  880  80 2575 150 - - +
+r   420  30 1300  80 1600 100 - - +
+stops
+b     0  50  800  75 1750 120 - - +
+d     0  30 1700  50 2600 160 - - +
+g     0  15 2350  50 2000 100 - - +
+p     0  50  800  40 1750  80 - - -
+t     0  30 1700  30 2600 100 - - -
+k     0  10 2350  30 2000   - - - -
+nasals
+m   280  17  900  17 2200  40 + - +
+n   280  17 1700  17 2600 100 + - +
+ng  280  17 2300  17 2750 100 + - +
+fricatives
+f   175  30  900  50 2400 120 - + -
+th  200  30 1400  40 2200 100 - + -
+s   200  30 1300  40 2500  70 - + -
+F   175  30 1800 100 2000 100 - + -
+v   175  30 1100  50 2400 120 - + +
+th  200  30 1600  40 2200 100 - + +
+z   200  30 1300  40 2500  70 - + +
+dh  175  30 1800 100 2000 150 - + +
+
+*/

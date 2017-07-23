@@ -1,0 +1,42 @@
+desc:fx_tempodelay :: ccernn.2009 :: v0.0.1
+
+slider1: 0.75<0.25,4,0.25>delay length (num beats)
+slider2:-3.0 <-60,0,1>feedback
+slider3:-6.0 <-60,0,1>output.wet
+slider4:-3.0 <-60,0,1>output.dry
+
+@init
+
+  buf = 1000;
+  pos = 0;
+
+@slider
+
+  del = slider1;
+  fbk = 2^(slider2/6);
+  wet = 2^(slider3/6);
+  dry = 2^(slider4/6);
+
+@block
+
+  dly = ((srate*60)/tempo) * del;
+
+@sample
+
+  // increase pointer, wrap-around
+  // (now points to 'dly' samples ago)
+  oldpos = pos;
+  pos += 1;
+  pos >= dly ? pos = 0;
+
+  // grab delayed sample
+  out0 = buf[(pos*2)  ];
+  out1 = buf[(pos*2)+1];
+
+  // save current samples to buffer (for next round)
+  buf[(oldpos*2)]   = spl0 + (out0*fbk);
+  buf[(oldpos*2)+1] = spl1 + (out0*fbk);
+
+  spl0 = (spl0*dry) + (out0*wet);
+  spl1 = (spl1*dry) + (out1*wet);
+

@@ -1,0 +1,135 @@
+desc:syn_tb303 :: ccernn.2009 :: v0.0.2
+// roland tb-303 emulator
+// based on tb303.pas by tobybear
+slider1:0<0,1,1{saw,squ}>waveform
+slider2:0.9<0,1,0.01>cutoff
+slider3:0.1<0,1,0.01>resonance
+slider4:1<0,1,0.01>env mod
+slider5:0.1<0,1,0.01>env decay
+slider6:0<0,1,1{off,on}>glide
+slider7:0.01<0.01,1,0.01>glide speed 
+slider8:0<0,1,1{off,on}>accent
+slider9:0<0,1,0.01>acc amt
+@init
+  pi = $pi;
+  ENVINC = 64;
+  vco_inc_dest = (440/srate);  
+  vco_inc = vco_inc_dest;
+  vcf_envpos = ENVINC;
+  vca_mode = 2;
+  vcf_rescoeff = 1;
+  vca_attack = 1-0.94406088;
+  vca_decay = 0.99897516;
+  vca_a0 = 0.5;
+  vca_accamt = 0.5;
+  sld_spd = 0.1;
+  cntmax = 1;
+  playingnote = -1;
+@slider
+  vco_wav = slider1;
+  sld_spd = slider7;
+  vcf_cutoff = slider2;
+  vcf_reso = slider3; 
+  vcf_envmod = slider4;
+  vcf_envdecayi = slider5;
+  vca_accamt = slider9;
+  noteon_acc = slider8;
+  noteon_glide = slider6;
+  vcf_rescoeff = exp(-1.20+3.455*vcf_reso);
+  vcf_envdecay = (0.2+(2.3*vcf_envdecayi))*srate;
+  vcf_envdecay < 1 ? vcf_envdecay = 1;
+  vcf_envdecay = pow(0.1,1/vcf_envdecay*ENVINC);
+  // procedure recalc
+  vcf_e1 = exp(6.109+1.5876*vcf_envmod+2.1553*vcf_cutoff-1.2*(1.0-vcf_reso));
+  vcf_e0 = exp(5.613-0.8*vcf_envmod+2.1553*vcf_cutoff-0.7696*(1.0-vcf_reso));
+  vcf_e0 = vcf_e0*$pi/srate;
+  vcf_e1 = vcf_e1*$pi/srate;
+  vcf_e1 = vcf_e1-vcf_e0;
+  vcf_envpos = ENVINC;
+@block
+// procedure TTB303.noteon(note:integer;acc,glide:boolean);
+  while
+  (
+    midirecv(ts,msg1,msg23) ? 
+    (
+      m = msg1 & 240;
+      // note on
+      (m == 9*16) ?
+      (
+        note = msg23 & 127;
+        //freq = 440 * pow(2.0,(note-69.0)/12.0);
+        vel = (msg23/256) | 0;
+        vco_inc_src = vco_inc;
+        vco_inc_dest = (440/srate) * pow(2,(note-57)*(1/12));
+        cntmax = floor(srate*sld_spd);
+        noteon_glide ? cnt = 0 : cnt = cntmax - 1;
+        vca_mode = 0;
+        vcf_c0 = vcf_e1;
+        vcf_envpos = ENVINC;
+        noteon_acc ? vca_a0 = 0.5+vca_accamt*0.5 : vca_a0 = 0.5;
+        playingnote = note;
+      ) : 
+      // note off
+      (m == 8*16) ?
+      (
+        note = msg23 & 127;
+        note==playingnote ? (
+          vca_a = 0;
+          vca_mode = 2;
+          playingnote = -1;
+        );
+      );
+      midisend(ts,msg1,msg23);
+    );
+  );
+// function TTB303.Process(inp:single):single;
+@sample
+  result = 0;
+  vcf_envpos >= ENVINC ?
+  (
+    w = vcf_e0 + vcf_c0;
+    k = exp(-w/vcf_rescoeff);
+    vcf_c0 = vcf_c0 * vcf_envdecay;
+    vcf_a = 2 * cos(2*w) * k;
+    vcf_b = -k * k;
+    vcf_c = 1 - vcf_a - vcf_b;
+    vcf_envpos = 0;
+  );
+  vco_wav > 0.5 ?
+  (
+    vco_k < 0 ? n = -0.5 : n = 0.5;
+    result = vcf_a*vcf_d1+vcf_b*vcf_d2+vcf_c*n*vca_a;
+  ) :
+  (
+    result = vcf_a*vcf_d1 + vcf_b*vcf_d2 + vcf_c*vco_k * vca_a;
+  );
+  vcf_d2 = vcf_d1;
+  vcf_envpos = vcf_envpos + 1;
+  vcf_d1 = result;
+  cnt += 1;
+  w = cnt / cntmax;
+  w < 1 ?
+  (
+    k = vco_inc_src*(1-w)+w*vco_inc_dest;
+  ) :
+  (
+    vco_inc = vco_inc_dest;
+    k = vco_inc;
+  );
+  vco_k = vco_k + k;
+  vco_k > 0.5 ? vco_k = vco_k - 1;
+  vca_mode == 0 ?
+  (
+    vca_a = vca_a+(vca_a0-vca_a)*vca_attack;
+  ) :
+  vca_mode == 1 ?
+  (
+    vca_a = vca_a*vca_decay;
+    vca_a < (1/65536) ?
+    (
+      vca_a = 0;
+      vca_mode = 2;
+    );
+  );
+  spl0 = result;
+  spl1 = result;

@@ -1,0 +1,82 @@
+desc:fx_reverb :: ccernn.2009 :: v0.0.1
+// just 4 allpass delay lines in series
+
+slider1:1053<0,2000,1>l1
+slider2:0.7<0,1,0.01>g1
+slider3:337<0,2000,1>l2
+slider4:0.7<0,1,0.01>g2
+slider5:113<0,2000,1>l3
+slider6:0.7<0,1,0.01>g3
+slider7:37<0,2000,1>l4
+slider8:0.7<0,1,0.01>g4
+
+@init
+
+  b1 = 2048*0;
+  b2 = 2048*1;
+  b3 = 2048*2;
+  b4 = 2048*3;
+
+@slider
+
+  l1 = slider1;
+  g1 = slider2;
+  l2 = slider3;
+  g2 = slider4;
+  l3 = slider5;
+  g3 = slider6;
+  l4 = slider7;
+  g4 = slider8;
+
+  p1 = 0;
+  p2 = 0;
+  p3 = 0;
+  p4 = 0;
+
+@sample
+
+  // allpass.1
+
+  in = (spl0+spl1)*0.5;
+  d = b1[p1];
+  x = in + ( g1*d);
+  y = d + (-g1*x );
+  b1[p1] = x;
+  p1 += 1;
+  p1 >= l1 ? p1 -= l1;
+
+  // allpass.2
+
+  in = y;
+  d = b2[p2];
+  x = in + ( g2*d);
+  y = d + (-g2*x );
+  b2[p2] = x;
+  p2 += 1;
+  p2 >= l2 ? p2 -= l2;
+
+  // allpass.3
+
+  in = y;
+  d = b3[p3];
+  x = in + ( g3*d);
+  y = d + (-g3*x );
+  b3[p3] = x;
+  p3 += 1;
+  p3 >= l3 ? p3 -= l3;
+
+  // allpass.4
+
+  in = y;
+  d = b4[p4];
+  x = in + ( g4*d);
+  y = d + (-g4*x );
+  b4[p4] = x;
+  p4 += 1;
+  p4 >= l4 ? p4 -= l4;
+
+//  spl0 += y;
+//  spl1 = spl0;
+//  //spl0 = spl1 = y;
+  spl0 = spl1 = y;
+

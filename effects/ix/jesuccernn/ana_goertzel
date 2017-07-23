@@ -1,0 +1,68 @@
+desc:ana _goertzel :: ccernn.2009 :: v0.0.3
+
+slider1:10<2,15,1>bits
+slider2:0<0,63,1>input
+slider3:1<-1,63,1>output (-1=off)
+slider4:440<0,20000,0.1>freq
+slider5:0<0,2,1{none,hamming,blackman}>windowing
+
+@init
+  pos   = 0;
+
+@slider
+
+  bits  = slider1;
+  ain   = slider2;
+  aout  = slider3;
+  freq  = slider4;
+  wind  = slider5;
+  size  = 2^bits;
+  isize = 1/size;
+  isize2 = 1/(size/2);
+  pos   = 0;
+//fr    = freq;
+//bw    = srate*isize;
+  k     = (size*freq)/srate;
+  w     = ((2*$pi)*isize)*k;
+  cw    = cos(w);
+  sw    = sin(w);
+  coeff = 2*cw;
+  Q0    = 0;
+  Q1    = 0;
+  Q2    = 0;
+  out   = 0;
+
+@sample
+
+  input = spl(ain);
+  wind==1 ? ( // hamming
+    window  = 0.54 - (0.46 * cos(2*$pi*(pos*isize)));
+    input *= window;//hamming;
+  ) :
+  wind==2 ? ( // blackman
+    window  = 0.426591 - (.496561*cos(2*$pi*(pos*isize))) + (.076848*cos(4*$pi*(pos*isize)));
+    input *= window;
+  );
+
+  Q0 = (coeff * Q1) - Q2 + input;
+  Q2 = Q1;
+  Q1 = Q0;
+
+  pos += 1;
+  pos>=size ? (
+    pos = 0;
+
+    re  = Q1-(Q2*cw);       // real
+    im  = Q2*sw;            // imginary
+    ma2 = (re*re)+(im*im);  // magnitude^2 (power)
+    //ma2 = (Q1*Q1) + ((Q2*Q2)-(Q1*Q2*coeff)); // direct (no re/im)
+    ma  = sqrt(ma2);        // scale (0..input)
+    out = ma * isize2;
+    //oor  = re * isize2;
+    //ooi  = im * isize2;
+    Q1  = 0;
+    Q2  = 0;
+
+  );
+  aout>=0 ? spl(aout) = out;
+

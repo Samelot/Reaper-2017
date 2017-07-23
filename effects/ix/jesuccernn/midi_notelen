@@ -1,0 +1,47 @@
+desc:midi_notelen :: ccernn.2009 :: v0.0.1
+slider1: 10 < 0,1000,1 > note length (ms)
+@init
+  OFFSETS = 0;
+  memset(OFFSETS,-1,128);
+@slider
+  length = srate * (slider1/1000);
+@block
+  // store incoming notes
+  // ignore note off
+  while(
+    midirecv(ofs,msg1,msg23) ? (
+      msg = msg1 & 240;
+      //---------- note on
+      (msg == 9*16) ? (
+        n  = msg23 & 127;
+        OFFSETS[n] = length + ofs;
+        midisend(ofs,msg1,msg23);
+      ) : 
+      //---------- note off
+      (msg == 8*16) ? (
+        ignore = 1;
+      ) :
+      //---------- other
+      midisend(ofs,msg1,msg23);
+    );
+  );
+  // time to send note off messages?
+  n = 0;
+  loop( 128,
+    OFFSETS[n] >= 0 ? (
+      OFFSETS[n] < samplesblock ? (
+        midisend( OFFSETS[n], (8*16), n ); // note off
+        OFFSETS[n] = -1;
+      ) : OFFSETS[n] -= samplesblock;
+    );
+    n += 1;
+  );
+  // panic
+  trigger & 1 ? (
+    n = 0;
+    loop( 128,
+      midisend( 0, (8*16), n );
+      n += 1;
+    );
+  );
+

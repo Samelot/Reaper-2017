@@ -1,0 +1,127 @@
+desc:fx_grains2 :: ccernn.2009 :: v0.0.1
+
+slider1: -6    < -60,6      > master volume (db)
+slider2:  10    < 1,  20,  1 > number of grains
+slider3:  1000 < 1,  1000   > buffer size (ms)
+slider4:  0    < 0,  1,   1 {off,on} > freeze
+slider5:  20   < 0, 100    > grain distance (ms)
+slider6:  30   < 1,  100    > grain size (ms)
+slider7:  300  < 1,  1000   > grain duration (ms)
+slider8:  1    < 0  ,10     > grain pitch
+slider9:  0    < 0,  1      > grain envelope (not used yet)
+slider10: 0.2  < 0,  1      > distance jitter
+slider11: 0.2  < 0,  1      > pitch jitter
+slider12: 0.2  < 0,  1      > size jitter
+slider13: 0.2  < 0,  1      > duration jitter
+
+@init
+
+  GRAINS = 1000;
+    _on  = 0;  // mode
+    _pos = 1;  // on/off
+    _sta = 2;  // phase
+    _end = 3;  // pitch
+    _dur = 4;  // duration
+    _spd = 5;  // speed (pitch)
+    _ph  = 6;  // phase (env)
+    _pa  = 7;  // env adder (phase)
+    _dh  = 8;  // same, but env for whole grain duration
+    _da  = 9;  // 
+  GRAIN_SIZE = 10;
+
+  BUFFER = 2000;
+  index = 0;
+  countdown = 0;
+
+@slider
+
+  master        = 2^(slider1/6);
+
+  numgrains     =    slider2;
+  buffersize    =   (slider3/1000) * srate;
+  freeze        =    slider4;
+
+  graindist     =   (slider5/1000) * srate;
+  grainsize     =   (slider6/1000) * srate;
+  graindur      =   (slider7/1000) * srate;
+  grainpitch    =    slider8;
+  grainenv      =    slider9;
+
+  startjit      =    slider10;
+  pitchjit      =    slider11;
+  sizejit       =    slider12;
+  durjit        =    slider13;
+
+@sample
+
+  in = (spl0+spl1)*0.5;
+  out = 0;
+
+  newgrain = -1;
+
+  G = GRAINS;
+  loop( numgrains,
+    G[_on] ? (
+      G[_pos] += G[_spd];
+      G[_pos] >= G[_end]    ? G[_pos]=G[_sta];
+      G[_pos] >= buffersize ? G[_pos]-=buffersize;
+
+      G[_ph] += (G[_pa]*2);
+      G[_ph]>=2 ? G[_ph]-=2;
+
+      G[_dh] += (G[_da]*2);
+      G[_dh]>=2 ? G[_dh]-=2;
+
+      G[_dur] -= 1;
+      G[_dur]<=0 ? G[_on]=0;
+
+      gvol = G[_ph] * (2-abs(G[_ph])); // abs-neg ?
+      dvol = G[_dh] * (2-abs(G[_dh]));
+
+      out += BUFFER[ G[_pos] ] * dvol * gvol;
+
+    ) : newgrain = G;
+    G += GRAIN_SIZE;
+  );
+
+  countdown <= 0 ? (
+    countdown = graindist;
+    newgrain>0 ? (
+
+      startrnd = 1 + (startjit * (rand(2)-1));
+      pitchrnd = 1 + (pitchjit * (rand(2)-1));
+      sizernd  = 1 + (sizejit  * (rand(2)-1));
+      durrnd   = 1 + (durjit   * (rand(2)-1));
+
+      siz = (grainsize*sizernd);
+
+      st = index*startrnd;
+      st >= buffersize ? st-=buffersize;
+      st <  0          ? st+=buffersize;
+
+      en = st + siz;
+      en >= buffersize ? en=buffersize; // clamp
+      en <  0          ? en=0;
+
+      du = graindur*durrnd;
+
+      newgrain[_on]  = 1;
+      newgrain[_pos] = st;
+      newgrain[_sta] = st;
+      newgrain[_end] = en;
+      newgrain[_dur] = du;
+      newgrain[_spd] = grainpitch*pitchrnd;
+      newgrain[_ph] = 0;
+      newgrain[_pa] = 1/siz;
+      newgrain[_dh] = 0;
+      newgrain[_da] = 1/du;
+
+    );
+  );
+
+  countdown -= 1;
+  freeze < 0.5 ? BUFFER[index] = in;
+  index += 1;
+  index >= buffersize ? index -= buffersize;
+  spl0 = spl1 = out*master;
+

@@ -1,0 +1,48 @@
+desc:fx_dist1 :: ccernn.2009 :: v0.0.2
+
+slider1: 1    < 1, 100,0.01 > boost
+slider2: 0.25 < 0, 1,  0.01 > clip
+slider3: 1    < 0, 1,  0.01 > filter
+//slider4: 1  < 0, 1>g
+
+@init
+  s0 = 0;
+  s1 = 0;
+
+@slider
+  boost = slider1;
+  clip  = slider2*slider2;
+  f     = slider3*slider3;
+//g = slider4;
+
+@sample
+
+  in0 = spl0;
+  in1 = spl1;
+
+  out0 = in0*boost;
+  out1 = in1*boost;
+
+  out0> clip ? out0= clip;
+  out0<-clip ? out0=-clip;
+
+  out1> clip ? out1= clip;
+  out1<-clip ? out1=-clip;
+
+// http://www.musicdsp.org/archive.php?classid=3#263
+
+//  // 101 Leaky Integrator
+//  a0 = 1;
+//  b1 = 1-f;
+//  out0 = (s0 += out0 - f * s0);
+//  out1 = (s1 += out1 - f * s1);
+
+  // 102 Basic Lowpass (all-pole)
+  a0 = f;
+  b1 = 1-f;
+  out0 = (s0 += f*(out0-s0));
+  out1 = (s1 += f*(out1-s1));
+
+  spl0 = out0;
+  spl1 = out1;
+

@@ -1,0 +1,31 @@
+desc:fx_dynamics :: ccernn.2009 :: v0.0.1
+
+slider1:  0    < -24, 24  > Pre Gain (db)
+slider2:  0    < -24, 24  > Post Gain (db)
+slider3:  0    < -24, 0   > Threshold (db)
+slider4:  3    <  1, 10   > Ratio
+slider5:  2000 <  1, 3000 > Attack (db/sec)
+slider6:  300  <  1, 3000 > Release (db/sec)
+
+@init
+  gain=1;
+
+@slider
+  
+  pregain  =  2^(slider1/6);
+  postgain =  2^(slider2/6);
+  thresh   =  2^(slider3/6);
+  ratio    =   1/slider4;
+  attack   = 1 / ( 2^((slider5/srate)/6) );
+  release  =       2^((slider6/srate)/6);
+
+@sample
+
+  input = pregain * max(abs(spl0),abs(spl1));
+  input > thresh ?
+    target = thresh + ((input-thresh)*ratio)
+  : target=1;
+  gain > target ? (gain*=attack) : (gain*=release);
+  spl0 *= (gain*postgain);
+  spl1 *= (gain*postgain);
+

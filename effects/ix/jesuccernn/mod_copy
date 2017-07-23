@@ -1,0 +1,20 @@
+desc:mod_copy :: ccernn.2009 :: v0.0.1
+
+slider1:0<0,63,1>from channel
+slider2:1<0,63,1>to channel
+slider3:1<1,64,1>num channels
+
+@slider
+  fromchan = slider1;
+  tochan   = slider2;
+  numchan  = slider3;
+
+@sample
+  t = tochan;
+  f = fromchan;
+  loop( numchan,
+    spl(t) = spl(f);
+    t+=1;
+    f+=1;
+  );
+

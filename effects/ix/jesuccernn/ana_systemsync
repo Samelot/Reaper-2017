@@ -1,0 +1,28 @@
+ desc:ana_systemsync :: ccernn.2009 :: v0.0.2
+
+slider1:-1<-1,63,1>sync output
+slider2:0<0,2,1{srate,block,tempo}>mode
+slider3:1<0,1000,0.01>multiplier
+
+@init
+  do_sync = 0;
+  count = 0;
+  num = 0;
+@slider
+  sync = slider1;
+  mode = slider2;
+  mult = slider3;
+  do_sync = 0;
+@block
+  mode==0 ? num = srate :
+  mode==1 ? num = samplesblock :
+  mode==2 ? num = (60 * srate) / tempo;
+  num *= mult;
+@sample
+  out = 0;
+  count += 1;
+  count >= num ? (
+    count -= num;
+    out = 0.95;
+  );
+  sync == 1 ? spl(sync) = out;

@@ -1,0 +1,76 @@
+extension_api("BR_GetMouseCursorContext", #window, #segment, #details, 512);
+// ShowConsoleMsg(sprintf(#dest, "%s", #window));
+
+trackSelArray = 3333;
+trackSelArrayLen = 0;
+
+trackUnselArray = 4444;
+trackUnselArrayLen = 0;
+
+// i = 0; 
+// loop(CountSelectedTracks(0),
+// 	track = GetSelectedTrack(0, i);
+// 	trackSelArray[i] = track;
+// 	trackSelArrayLen += 1;
+// 	i += 1;
+// );
+
+// i = 0;
+// loop(GetNumTracks(),
+// 	track = GetTrack(0, i);
+	
+// 	selectedCheck = 0;
+// 	j = 0;
+
+// 	loop(trackSelArrayLen,
+// 		(track == trackSelArray[j]) ? (
+// 			selectedCheck += 1;
+// 		);
+// 		j += 1;
+// 	);
+
+// 	(!selectedCheck) ? (
+// 		trackUnselArray[trackUnselArrayLen] = track;
+// 		trackUnselArrayLen += 1;		
+// 	);
+
+// 	// strcat(#str, "track: ");
+// 	// strcat(#str, sprintf(#dest, "%d", i));
+// 	// strcat(#str, " ");
+// 	// strcat(#str, " previously selected: ");
+// 	// strcat(#str, sprintf(#dest, "%d", selectedCheck));
+// 	// strcat(#str, "\n");
+	
+// 	// ShowConsoleMsg(#str);
+// 	// str_setlen(#str, 0);
+	
+// 	i += 1;
+// );
+
+// Main_OnCommand(40297, 0); // Unselect all tracks
+
+// i = 0;
+// loop(trackUnselArrayLen,
+// 	SetTrackSelected(trackUnselArray[i], 1);
+// 	i += 1;
+// );
+
+// // Main_OnCommand(NamedCommandLookup("_XENAK_TOGGLETRACKHEIAB"), 0);
+
+
+
+// Main_OnCommand(40297, 0); // Unselect all tracks
+
+// i = 0;
+// loop(trackSelArrayLen,
+// 	SetTrackSelected(trackSelArray[i], 1);
+// 	i += 1;
+// );
+
+Main_OnCommand(NamedCommandLookup("_XENAKIOS_STORETRACKHEIGHTS"), 0);
+
+// CSurf_OnZoom(0, 3);
+Main_OnCommand(40112, 0);
+Main_OnCommand(NamedCommandLookup("_XENAKIOS_RECALLTRACKHEIGHTS"), 0);
+
+UpdateArrange();

@@ -1,0 +1,42 @@
+desc:syn_lorenz :: ccernn.2009 :: v0.0.2
+// lorenz chaotic oscillator
+slider1:0.5<0,1,0.001>(careful!) vol
+slider2:-10<-50,-1,0.001>x1
+slider3: 10<0,20,0.001>x2
+slider4: 20<0,50,0.001>y1
+slider5: -8<-20,-1,0.001>z1
+slider6:  3<1,50,0.001>z2
+slider7: 17<1,50,0.001>xyz
+@init
+  
+  mX  = 0.02;
+  mY  = 20.0;
+  mZ  = 0.9;
+
+@slider
+
+  vol = slider1;
+  x1  = slider2;
+  x2  = slider3;
+  y1  = slider4;
+  z1  = slider5;
+  z2  = slider6;
+  xyz = slider7;
+
+  mX  = 0.02;
+  mY  = 20.0;
+  mZ  = 0.9;
+
+@sample
+
+  xx = mX + 0.01 * ( x1 * mX + x2 * mY );
+  yy = mY + 0.01 * ( y1 * mX - mY - mX * mZ );
+  zz = mZ + 0.01 * ( z1 * mZ / z2 + mX * mY );
+  //mX > maxx ? maxx = mX;
+  //mX < minn ? minn = mX;
+  spl0 = (mX/xyz) * vol;
+  spl1 = spl0;
+  mX = xx;
+  mY = yy;
+  mZ = zz;
+

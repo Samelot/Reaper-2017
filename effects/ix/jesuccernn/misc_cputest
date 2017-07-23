@@ -1,0 +1,86 @@
+desc:misc_cputest :: ccernn.2009 :: v0.0.1
+
+slider1:0<0,9,1{off,loop,loop.sqrt,while,while.sqrt,while.sqrt.buf,while.sqrt.gmem,memcpy,loop.cpy,loop.cpy.gmem}>mode
+slider2:40<0,1000,1>loop iterations
+slider3:10<0,65536,1>copy sizes
+slider4:0<0,4000000,1>buffer offset
+
+@slider
+
+  mode = slider1;
+  iter = slider2;
+  size = slider3;
+  ofs =  slider4;
+
+  buffer1 = 0;
+  buffer2 = buffer1 + ofs;
+
+@sample
+
+  num = 0;
+
+  mode==1 ? ( // loop
+    loop( iter,
+      num += 1;
+    );
+  );
+  mode==2 ? ( // loop.sqrt
+    loop( iter,
+      num += sqrt(2);
+    );
+  );
+  mode==3 ? ( // while
+    i = 0;
+    while(
+      num += 1;
+      i += 1;
+      i < iter;
+    );
+  );
+  mode==4 ? ( // while.sqrt
+    i = 0;
+    while(
+      num += sqrt(2);
+      i += 1;
+      i < iter;
+    );
+  );
+  mode==5 ? ( // while.sqrt.buf
+    i = 0;
+    while(
+      buffer2[i] += sqrt(2);
+      i += 1;
+      i < iter;
+    );
+  );
+  mode==6 ? ( // while.sqrt.gmem
+    i = 0;
+    while(
+      gmem[i] += sqrt(2);
+      i += 1;
+      i < iter;
+    );
+  );
+  mode==7 ? ( // memcpy
+    loop( iter,
+      memcpy(buffer1,buffer2,size);
+    );
+  );
+  mode==8 ? ( // loop.cpy
+    loop( iter,
+      i = 0;
+      loop( size,
+        buffer1[i] = buffer2[i];
+        i += 1;
+      );
+    );
+  );
+  mode==9 ? ( // loop.cpy.gmem
+    loop( iter,
+      i = 0;
+      loop( size,
+        buffer1[i] = gmem[i];
+        i += 1;
+      );
+    );
+  );

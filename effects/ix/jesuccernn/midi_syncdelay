@@ -1,0 +1,84 @@
+desc:midi_syncdelay :: ccernn.2009 :: v0.0.1
+
+slider1: 4 <0.25, 16, .25 > beats
+
+//--------------------------------------------------
+@init
+//--------------------------------------------------
+_i_n_i_t______ = 0;
+
+  EVENTS    = 1000;
+  MAXEVENTS = 1024;
+  numevents = 0;
+  prevstate = 0;
+  isplaying = 0;
+  countdown = 0;
+
+//--------------------------------------------------
+@slider
+//--------------------------------------------------
+_s_l_i_d_e_r______ = 0;
+
+  beats = slider1;
+
+//--------------------------------------------------
+@block
+//--------------------------------------------------
+_b_l_o_c_k______ = 0;
+
+  // buffer incoming midi events
+
+  while(
+    midirecv(ofs,msg1,msg23) ? (
+      numevents < MAXEVENTS ? (
+        E = EVENTS+(numevents*2);
+        E[0] = msg1;
+        E[1] = msg23;
+        numevents+=1;
+      );
+    );
+  );
+  //offset = 0;
+
+  speed = beats * srate / (tempo/60);
+  //ms =  beats * (60/tempo) * 1000;
+  speed<64 ? speed=64;
+
+  play_state != prevstate ? (
+    play_state & 1 ? (
+      isplaying = 1;
+      countdown = 0; // speed;
+      //numevents = 0;
+      //cycle = 0;//cyclecount;
+    ) : (
+      isplaying=0;
+    );
+    prevstate = play_state;
+  );
+  
+  isplaying ? (
+    offset = 0;
+    block = samplesblock;
+    while(
+      countdown >= block ? (
+        countdown-=block;
+        block=0;
+      ) : ( // count<block
+        offset += countdown;
+        block -= countdown;
+
+        E = EVENTS;
+        loop( numevents,
+          midisend(offset,E[0],E[1]);
+          E += 2;
+        );
+        numevents = 0;
+
+        countdown = speed;
+      ); // count<block
+      block>0;
+    ); // while
+  ); // isplaying
+
+//--------------------------------------------------
+_e_n_d______ = 0;

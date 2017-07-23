@@ -1,0 +1,63 @@
+desc:ana_transient :: ccernn.2009 :: v0.0.3
+
+slider1: 60 <  0, 500, 0.1 > env detector drop in db per sample
+slider2: 1  <  0, 100, 0.1 > block length (ms)
+slider3: 2  <  0, 20,  0.1 > rms energy rise in db for positive transient 
+slider4: 1  < -1, 63,  1   > sync output
+slider5: 0  <  0, 63,  1   > signal input
+
+// based on transient detector by LOSER
+// posted here
+// http://forum.cockos.com/showthread.php?t=25296
+
+@init
+
+  db  = 8.685889638;
+  idb = 0.115129254;
+
+@slider
+
+  rel        = slider1/srate;        // env detector drop in db per sample
+  tblock     = (slider2/1000)*srate; // block length in spls
+  trigFactdB = slider3;              // rms energy rise in db for positive transient 
+  sync       = slider4;
+  anain      = slider5;
+
+  env       = 0;
+  envsum    = 0;
+  envsumold = 1000000000;
+  pos       = 0;
+  t         = 0;
+
+  sync>=0 ? (
+    pdc_delay  = tblock;
+    pdc_bot_ch = pdc_top_ch = sync;
+  );
+
+@sample
+
+  input = spl(anain);
+  in    = max(log(abs(input))*db,-150);  // get input, convert -> db, max to above -150 to prevent -inf#
+  env   = in>env ? in : max(env-rel,in); // do envelope
+
+  // rms block measurement / compare
+  envsum += env;
+  (pos+=1) >= tblock ?
+  (
+    pos = 0;
+    envsum /= tblock;
+    t = envsum > envsumold+trigFactdB;
+    envsumold = envsum;
+    envsum = 0;
+  );
+  // spl1=spl0=t; // t=1 transient; t=0 no transient :)
+  sync>=0 ? spl(sync) = t*0.95;
+
+
+
+
+
+
+
+
+

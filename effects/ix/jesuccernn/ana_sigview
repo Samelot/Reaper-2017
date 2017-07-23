@@ -1,0 +1,124 @@
+desc:ana_sigview :: ccernn.2009 :: v0.0.2
+slider1:0<0,63,1>input
+slider2:-1<-1,63,1>sync
+slider3:256<1,65536,1>size
+slider4:10<0,15,1>bits
+slider5:0<0,4,1{dots,lines,bars,wavelet,wavelet.abs}>drawmode
+slider6:1<0.1,10,0.1>viewzoom
+
+@init
+  writebuf = (64*1024) * 0;
+  viewbuf  = (64*1024) * 1;
+  pos      = 0;
+  show_buf = 0;
+
+@slider
+
+  input    = slider1;
+  sync     = slider2;
+  size     = slider3;
+  bits     = slider4;
+  drawmode = slider5;
+  viewzoom = slider6;
+
+  bits > 0 ?
+  (
+    size = 2^bits;
+    slider3 = size;
+    sliderchange(slider3);
+  ) : ;
+  show_buf = 0;
+  //pos = 0;
+
+@sample
+
+  writebuf[pos] = spl(input);
+  pos += 1;
+  sync>=0 ? (
+    spl(sync) > 0.5 ? (
+      show_size = pos;
+      slider3 = show_size;
+      sliderchange(slider3);
+      pos = 0;
+      show_buf == 0 ? (
+        memcpy(viewbuf,writebuf,show_size);
+        show_buf = 1;
+      );
+    );
+  ) :
+  pos >= (size) ? (
+    pos = 0;
+    show_buf == 0 ? (
+      memcpy(viewbuf,writebuf,size);
+      show_buf = 1;
+      show_size = size;
+    );
+  );
+
+@gfx
+
+  //gfx_clear = x808080;
+
+  show_buf==1 ? (
+    // wavelet
+    (drawmode==3) || (drawmode==4) ? (
+      p = 1;   // pos/size
+      l = 1;   // level
+      yy  = (gfx_h/bits);
+      y1  = 0; //gfx_h - yy;
+      loop( bits,
+        n = p;
+        x1 = 0;
+        xx = (gfx_w/p);
+        loop( p,
+          drawmode==3 ? an = ((viewbuf[n]*viewzoom) + 1) * 0.5;
+          drawmode==4 ? an = abs(viewbuf[n])*viewzoom;
+          gfx_r=an; gfx_g=an; gfx_b=an; gfx_a=1;
+          gfx_x = x1;
+          gfx_y = y1;
+          gfx_rectto(x1+xx+1,y1+yy+1);
+          n += 1;
+          x1 += xx;
+        );
+        gfx_x = 0; gfx_y = y1;
+        gfx_r=1; gfx_g=0; gfx_b=0; gfx_a=0.5;
+        gfx_drawnumber((p*srate/size),2);
+        p *= 2;
+        l += 1;
+        y1 += yy; //-= yy;
+      );
+    ) :
+    // not wavelet
+    (
+      gfx_r=0.5; gfx_g=0.5; gfx_b=0.5; gfx_a=1; 
+      gfx_x=0; gfx_y=gfx_h/2;
+      gfx_lineto(gfx_w,gfx_h/2,0);    
+      gfx_r=1; gfx_g=1; gfx_b=1; gfx_a=1;
+      gfx_x = 0;
+      gfx_y = (gfx_h/2);
+      delta = show_size / gfx_w;
+      x = 0;
+      i = 0;
+      while (
+        n = viewbuf[i];
+        n *= viewzoom;
+        drawmode==0 ? (
+          gfx_x = x;
+          gfx_y = (gfx_h/2) + (n*(gfx_h/2));
+          gfx_setpixel(1,1,1);
+        ) :
+        drawmode==1 ? (
+          gfx_lineto(x,(gfx_h/2) + (n*(gfx_h/2)),0);
+        ) :
+        drawmode==2 ? (
+          gfx_x = x;
+          gfx_y = (gfx_h/2);
+          gfx_lineto(x,(gfx_h/2) + (n*(gfx_h/2)),0);
+        );
+        i += delta;
+        x += 1;
+        x < gfx_w;
+      );
+    );
+    show_buf = 0;
+  );

@@ -1,0 +1,68 @@
+xdesc:fx_fracdelay :: ccernn.2009 :: v0.0.4
+slider1:  100 <  0,4096,0.01 > delay (samples)
+slider2:  0.9 <  0,1,   0.001> feedback
+slider3: -6   <-60,0,   0.1  > volume (db)
+slider4: -6   <-60,0,   0.1  > dry (db)
+@init
+  buf  = 0;
+  pos  = 0;
+  size = 0;
+  frac = 0;
+  z00  = 0;
+  z01  = 0;
+@slider
+  dly  = slider1;
+  fbk = slider2;
+  wet  = 2^(slider3/6);
+  dry  = 2^(slider4/6);
+  size = floor(dly);
+  frac = dly - size;
+@block
+  while
+  (
+    midirecv(ts,msg1,msg23) ? (
+      m = msg1 & 240;
+      (m == 9*16) ? (
+        note = msg23 & 127;
+        freq = 440 * pow(2.0,(note-69.0)/12.0);
+        vel  = (msg23/256) | 0;
+        //wet  = vel/127;
+        dly  = srate / freq;
+        //slider1 = dly;
+        //slider3 = wet;
+        //sliderchange(slider1+slider3);
+        size = floor(dly);
+        frac = dly - size;
+        pos  = 0;
+        z0   = 0;        
+      );
+      //(m == 13*16) ? (
+      //  note = msg23 & 127;
+      //  vel  = (msg23/256) | 0;
+      //  fbk = (note/127) - 0.001;
+      //);
+      midisend(ts,msg1,msg23);
+    );
+  );
+@sample
+  pos2 = pos*2;
+  in0 = spl0;
+  in1 = spl1;
+  d00 = buf[pos2];
+  d01 = buf[pos2+1];
+  dly<1 ? (
+    i00 = (in0*(1-frac)) + (d00*frac);
+    i01 = (in1*(1-frac)) + (d01*frac);
+  ) : (
+    i00 = (d00*(1-frac)) + (z00*frac);
+    i01 = (d01*(1-frac)) + (z01*frac);
+  );
+  buf[pos2]   = in0 + (fbk*i00);
+  buf[pos2+1] = in1 + (fbk*i01);
+  z00 = d00;
+  z01 = d01;
+  pos += 1;
+  pos>=size ? pos=0; //-=size
+  spl0 = (in0*dry) + (i00*wet);
+  spl1 = (in1*dry) + (i01*wet);
+

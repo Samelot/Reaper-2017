@@ -1,0 +1,56 @@
+desc:fx_ambience :: ccernn.2009 :: v0.0.1
+// conversion of mdaAmbience
+slider1: 0.7 <0,1> size
+slider2: 0.7 <0,1> hf damp
+slider3: 0.9 <0,1> mix
+slider4: 0.5 <0,1> output
+@init
+  buf1 = (1024*0);
+  buf2 = (1024*1);
+  buf3 = (1024*2);
+  buf4 = (1024*3);
+  f = 0;
+  p = 0;
+@slider
+  fb   = 0.8;
+  damp = 0.05+(0.9*slider2);
+  tmp  = pow(10,(2*slider4)-1);
+  dry  = tmp - (slider3*slider3*tmp);
+  wet  = (0.4+0.4)*slider3*tmp;  
+  tmp  = 0.025 + (2.665*slider1);
+  size = tmp;
+@sample
+  d1 = (p+(107*size)) & 1023;
+  d2 = (p+(142*size)) & 1023;
+  d3 = (p+(277*size)) & 1023;
+  d4 = (p+(379*size)) & 1023;
+  a = spl0;
+  b = spl1;
+  f += (damp*((wet*(a+b))-f)); //hf-damping
+  r = f;
+  t = buf1[p];
+  r -= (fb*t);
+  buf1[d1] = r; //allpass
+  r += t;
+  t = buf2[p];
+  r -= (fb*t);
+  buf2[d2] = r; //allpass
+  r += t;
+  t = buf3[p];
+  r -= (fb*t);
+  buf3[d3] = r; //allpass
+  r += t;
+  c = ((dry*a)+r-f); //left output
+  t = buf4[p];
+  r -= (fb*t);
+  buf4[d4] = r; //allpass
+  r += t;
+  d = ((dry*b)+r-f); //right output
+  p +=1; p &=1023;
+  d1+=1; d1&=1023;
+  d2+=1; d2&=1023;
+  d3+=1; d3&=1023;
+  d4+=1; d4&=1023;
+  spl0 = c;
+  spl1 = d;
+

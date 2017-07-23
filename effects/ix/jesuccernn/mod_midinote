@@ -1,0 +1,61 @@
+desc:mod_midinote :: ccernn.2009 :: v0.0.0
+slider1: 2 < 0,63,1 > pitch output
+slider2: 3 < 0,63,1 > volume output
+slider3: 4 < 0,63,1 > gate output
+@slider
+  pout  = slider1;
+  vout = slider2;
+  gout = slider3;
+@init
+  EVENTS = 1000;
+    //_o = 0;
+    //_p = 1;
+    //_v = 2;
+    //_g = 3;
+  EVENTSIZE = 4;
+  note   = -1;
+  pitch  = 0;
+  volume = 0;
+@block
+  E = EVENTS;
+  numevents = 0;
+  while(
+    midirecv(ofs,msg1,msg23) ? (
+      //midisend(ofs,msg1,msg23);
+      m = msg1 & 240;
+      (m==9*16) ? ( // note on
+        note = (msg23&127);
+        E[0] = ofs;
+        E[1] = (440 * pow(2.0,(note-69.0)/12.0)) / srate;
+        E[2] = ((msg23/256)|0) / 127;
+        E[3] = 1;
+        E += EVENTSIZE;
+        numevents+=1;
+      );
+      (m == 8*16) ? ( // note off
+        note == (msg23&127) ? (
+          E[0] = ofs;
+          E[1] = (440 * pow(2.0,(note-69.0)/12.0)) / srate;
+          E[2] = 0;
+          E[3] = 0;
+          E += EVENTSIZE;
+          numevents+=1;
+        );
+      );
+    );
+  );
+  offset = 0;
+@sample
+  E = EVENTS;
+  loop( numevents,
+    E[0] == offset ? (
+      pitch  = E[1];
+      volume = E[2];
+      gate   = E[3];
+    );
+    E += EVENTSIZE;
+  );
+  spl(pout) = pitch;
+  spl(vout) = volume;
+  spl(gout) = gate;
+  offset += 1;

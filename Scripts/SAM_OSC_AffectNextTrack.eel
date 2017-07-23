@@ -1,0 +1,9 @@
+yo[] = get_action_context(#filename,sectionID,cmdID,mode,resolution,val);
+
+newParamValue = val / 16383;
+
+OscLocalMessageToHost("/track/3/volume", newParamValue);
+//ShowConsoleMsg(sprintf(#dest, "%f", newParamValue));
+//ShowConsoleMsg("\n");
+
+

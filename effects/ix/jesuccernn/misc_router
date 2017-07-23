@@ -1,0 +1,16 @@
+desc:misc_router :: ccernn.2009 :: v0.0.1
+slider1:0<0,63,1>from channel
+slider2:0<0,63,1>to channel
+slider3:0<-1,1,0.01>amount
+slider4:0<0,4,1{none,clear,copy,add,mul}>mode
+@slider
+  chn_from = slider1;
+  chn_to   = slider2;
+  amt      = slider3;
+  mode     = slider4;
+@sample
+  //mode==0 ? () :
+  mode==1 ? spl(chn_to) = 0 :
+  mode==2 ? spl(chn_to) = spl(chn_from)*amt :
+  mode==3 ? spl(chn_to)+= spl(chn_from)*amt :
+  mode==4 ? spl(chn_to)*= spl(chn_from)*amt;

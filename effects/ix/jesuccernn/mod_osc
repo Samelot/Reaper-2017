@@ -1,0 +1,13 @@
+desc:mod_osc :: ccernn.2009 :: v0.0.0
+slider1: 0 < 0,63,1 > pitch input
+slider2: 1 < 0,63,1 > output
+@slider
+  pitch  = slider1;
+  output = slider2;
+@init
+  phase = 0;
+@sample
+  spl(output) = sin(phase*$pi*2);
+  phase += spl(pitch);
+  phase >= 1 ? phase -= 1;
+

@@ -1,0 +1,45 @@
+desc:fx_freeze :: ccernn.2009 :: v0.0.1
+slider1: 1000 <1, 1000       > buffersize (ms)
+slider2: 1    <0, 1,   0.001 > size
+slider3: 1    <0, 4,   0.001 > speed
+slider4: 0    <0, 1,   0.001 > start
+slider5: 0    <0, 1,   1     > freeze
+slider6: 1    <0, 1,   1{wrap,bidi}> loop mode
+@init
+  BUFFER = 1000;
+  index = 0;
+  pos = 0;
+@slider
+  bufsize = (slider1/1000)*srate;
+  size    = bufsize * slider2;
+  speed   = slider3;
+  start   = bufsize * slider4;
+  freeze  = slider5;
+  mode    = slider6;
+  size = max(size,1);
+@sample
+  !freeze ? BUFFER[index] = (spl0+spl1)*0.5;
+  index += 1;
+  index>=bufsize ? index=0;
+  out = BUFFER[pos];
+  pos += speed;
+  mode==0 ? ( // wraparound
+    pos >= size ? pos-=size;
+    pos <  0    ? pos+=size;
+  ) :
+  mode==1 ? ( // bidi looping
+    pos >= size ? (
+      pos = size - (pos-size);
+      speed = -speed;
+    ) :
+    pos < 0 ? (
+      pos = -pos;
+      speed = -speed;
+    );
+  );
+  p = start + pos;
+  p>=bufsize ? while( p-=bufsize; p>=bufsize; );
+  p<0 ? while( p+=bufsize; p<0; );
+  out = BUFFER[p];
+  spl0 = spl1 = out;
+

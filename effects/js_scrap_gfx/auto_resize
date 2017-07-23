@@ -1,0 +1,13 @@
+desc: auto resize
+
+@gfx 460 240
+gfx_x = 100; gfx_y = 60;
+X1 = gfx_w -100;
+Y1 = gfx_h -40;
+
+gfx_r = 1.00;
+gfx_g = 0.60;
+gfx_b = 0.10; 
+gfx_a = 1 - gfx_h / 1000;
+gfx_rectto(X1,Y1);
+gfx_printf(" .. Moving");

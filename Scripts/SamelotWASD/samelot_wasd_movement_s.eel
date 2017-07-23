@@ -1,0 +1,17 @@
+extension_api("BR_GetMouseCursorContext", #window, #segment, #details, 512);
+// ShowConsoleMsg(sprintf(#dest, "%s", #window));
+
+// CSurf_OnZoom(0, 1);
+
+// CSurf_OnArrow(3, 1);
+match("arrange", #window) ? (
+  // CSurf_OnScroll(0, 5);
+  Main_OnCommand(NamedCommandLookup("_XENAKIOS_TVPAGEDOWN"), 0);
+) : match("tcp", #window) ? (
+  CSurf_OnScroll(0, 5);
+);
+
+// Main_OnCommand(40138, 0);
+// 40139
+// 40140
+// 40141

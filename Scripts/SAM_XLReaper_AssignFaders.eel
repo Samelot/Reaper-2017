@@ -1,0 +1,117 @@
+//Undo_BeginBlock();
+
+trackSelArray = 3333;
+trackSelArrayLen = 0;
+wtf = CountSelectedTracks(0);
+
+function RGB(r,g,b) (
+   b + 256 * g + 65536 * r;
+);
+
+i = 0; 
+loop(CountSelectedTracks(0),
+     track = GetSelectedTrack(0, i);
+     trackSelArray[i] = track;
+     trackSelArrayLen += 1;
+     i += 1;
+);
+
+(wtf > 0) ? (
+
+    Main_OnCommand(40297, 0); 
+    OscLocalMessageToHost("/track/select", 1);
+    OscLocalMessageToHost("/track/select", 0); 
+    OscLocalMessageToHost("/track/select", 1);
+    OscLocalMessageToHost("/track/select", 0);
+    i = 0;
+    loop(trackSelArrayLen,
+    
+        trackNum = GetMediaTrackInfo_Value(trackSelArray[i], "IP_TRACKNUMBER");
+        
+        //color = RGB(231, 120, 200)|0x1000000;
+        //SetTrackColor(trackSelArray[i], color);
+        
+        strcat(#ledState, "LEDState");    
+        strcat(#ledState, sprintf(#dest, "%i", i+1));
+        
+        SetExtState("SAM_XLReaper", #ledState, "1", 0);
+                
+        strcat(#led, "/track/");
+        strcat(#led, sprintf(#dest, "%i", i+1)); 
+        strcat(#led, "/select");
+        //ShowConsoleMsg(#led);
+        
+        Main_OnCommand(40297, 0); 
+   
+        OscLocalMessageToHost(#led, 1);
+        //OscLocalMessageToHost(#led, 0);        
+    
+        strcat(#fader, "Fader");    
+        strcat(#fader, sprintf(#dest, "%i", i+1));
+        strcat(#trackNum, sprintf(#dest, "%i", trackNum));
+    
+        SetExtState("SAM_XLReaper", #fader, #trackNum, 0);
+    
+        strcat(#msg, #fader);
+        strcat(#msg, " = Track");
+        strcat(#msg, #trackNum);
+        strcat(#msg, "\n");
+        //ShowConsoleMsg(#msg);    
+        
+        // LED
+        str_setlen(#ledState, 0);       
+        str_setlen(#led, 0);   
+         
+        // fader
+        str_setlen(#fader, 0);
+        str_setlen(#trackNum, 0);
+        str_setlen(#msg, 0);
+        i += 1;
+    );
+    Main_OnCommand(40297, 0); 
+    OscLocalMessageToHost("/track/select", 1);
+    OscLocalMessageToHost("/track/select", 0); 
+    OscLocalMessageToHost("/track/select", 1);
+    OscLocalMessageToHost("/track/select", 0);
+) : (
+
+    Main_OnCommand(40297, 0); 
+    OscLocalMessageToHost("/track/select", 1);
+    OscLocalMessageToHost("/track/select", 0);
+    OscLocalMessageToHost("/track/select", 1);
+    OscLocalMessageToHost("/track/select", 0);
+    Main_OnCommand(40297, 0);  
+    OscLocalMessageToHost("/track/select", 1);
+    OscLocalMessageToHost("/track/select", 0);
+    OscLocalMessageToHost("/track/select", 1);
+    OscLocalMessageToHost("/track/select", 0);        
+    /*
+    i = 0;
+    loop(4, 
+        strcat(#ledState, "LEDState");    
+        strcat(#ledState, sprintf(#dest, "%i", i+1));
+        
+        SetExtState("SAM_XLReaper", #ledState, "0", 0);
+        
+        strcat(#led, "/track/");
+        strcat(#led, sprintf(#dest, "%i", i)); 
+        strcat(#led, "/select");
+
+        Main_OnCommand(40297, 0); 
+        OscLocalMessageToHost(#led, 1);
+        OscLocalMessageToHost(#led, 0);  
+
+        // LED
+        str_setlen(#ledState, 0);       
+        str_setlen(#led, 0);   
+        
+        //GetExtState(#trackNum, "SAM_XLReaper", "LEDState");
+        //ShowConsoleMsg("hi");
+        i += 1;
+    );
+    */
+);
+
+//UpdateArrange();     
+//Undo_EndBlock("set take x active",-2);
+

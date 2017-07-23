@@ -1,0 +1,55 @@
+desc:fx_dist3 :: ccernn.2009 :: v0.0.2
+slider1:  .20 <0,1  > low - mid
+slider2:  .80 <0,1  > mid - high
+slider3:  1   <0,4  > low boost
+slider4:  1   <0,4  > mid boost
+slider5:  1   <0,4  > high boost
+slider6:  1   <0,1  > low clip
+slider7:  1   <0,1  > mid clip
+slider8:  1   <0,1  > high clip
+slider9:  1   <0,10 > low post
+slider10: 1   <0,10 > mid post
+slider11: 1   <0,10 > high post
+slider12: 1   <0,1,0.001>filter
+slider13: 1   <0,1  > vol
+@init
+  lo0 = lo1 = 0;
+  hi0 = hi1 = 0;
+  n0  = n1  = 0;
+@slider
+  lo_mid   = slider1*slider1;
+  mid_hi   = slider2*slider2;
+  loboost  = slider3;
+  midboost = slider4;
+  hiboost  = slider5;
+  loclip   = slider6*slider6;
+  midclip  = slider7*slider7;
+  hiclip   = slider8*slider8;
+  lopost   = slider9;
+  midpost  = slider10;
+  hipost   = slider11;
+  filter   = slider12*slider12;
+  vol      = slider13*slider13;
+@sample
+  lo0  += ((spl0-lo0) * lo_mid);
+  hi0  += ((spl0-hi0) * mid_hi);
+  low0  = loboost * lo0;
+  mid0  = midboost * (hi0-lo0);
+  high0 = hiboost * (spl0-hi0);
+  low0  = lopost * max(-loclip,min(loclip,low0));
+  mid0  = midpost * max(-midclip,min(midclip,mid0));
+  high0 = hipost * max(-hiclip,min(hiclip,high0));
+  spl0  = (low0+mid0+high0);
+  spl0  = (n0 += ((spl0-n0)*filter))*vol;
+
+  lo1  += ((spl1-lo1) * lo_mid);
+  hi1  += ((spl1-hi1) * mid_hi);
+  low1  = loboost * lo1;
+  mid1  = midboost * (hi1-lo1);
+  high1 = hiboost * (spl1-hi1);
+  low1  = lopost * max(-loclip,min(loclip,low1));
+  mid1  = midpost * max(-midclip,min(midclip,mid1));
+  high1 = hipost * max(-hiclip,min(hiclip,high1));
+  spl1  = (low1+mid1+high1);
+  spl1  = (n1 += ((spl1-n1)*filter))*vol;
+

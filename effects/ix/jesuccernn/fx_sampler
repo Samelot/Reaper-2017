@@ -1,0 +1,108 @@
+desc:fx_sampler :: ccernn.2009 :: v0.0.2
+
+slider1: 4  < 1,16   > beats (buffersize)
+slider2: 2  < 0,2,  1{off,dots,lines}> draw mode
+slider3: 0  < 0,1,  1{manual,seq}> sync mode
+slider4: 48 < 0,127,1> transport note
+slider5: 49 < 0,127,1> record note
+slider6: 50 < 0,127,1> play note
+slider7: 51 < 0,127,1> erase note
+slider8: 52 < 0,127,1> bypass note
+
+@init
+  ext_noinit=1;
+  EVENTS = 0;
+  BUFFER = 65536;
+
+@slider
+
+  numbeats   = slider1;
+  drawmode   = slider2;
+  syncmode   = slider3;
+  transnote  = slider4;
+  recnote    = slider5;
+  playnote   = slider6;
+  erasenote  = slider7;
+  bypassnote = slider8;
+
+@block
+
+  trigger & 1 ? pos = 0;
+
+  bufsize = numbeats * srate * 60 / tempo;
+
+  while(
+    midirecv(ofs,msg1,msg23) ? (
+      msg = msg1 & 240;
+      msg == (9*16) ? ( // note on
+        note = msg23 & 127;
+        note==transnote  ? EVENTS[ofs] |= 1;
+        note==recnote    ? EVENTS[ofs] |= 2;
+        note==playnote   ? EVENTS[ofs] |= 4;
+        note==erasenote  ? EVENTS[ofs] |= 8;
+        note==bypassnote ? EVENTS[ofs] |= 16;
+      );
+      midisend(ofs,msg1,msg23);
+    );
+  );
+  offset = 0;
+
+@sample
+
+  evt = EVENTS[offset];
+  EVENTS[offset] = 0;
+  offset += 1;  
+  evt & 2 ? mode=1;  // rec
+  evt & 4 ? mode=2;  // play
+  evt & 8 ? mode=3;  // erase
+  evt & 16 ? mode=4; // bypass
+  evt & 1 ? playmode = 1-playmode;
+
+  pos2 = pos*2;
+  mode==1 ? ( // record
+    BUFFER[pos2] = spl0;
+    BUFFER[pos2+1] = spl1;
+  );
+  mode==2 ? ( // play
+    spl0 = BUFFER[pos2];
+    spl1 = BUFFER[pos2+1];
+  ) :
+  mode==3 ? ( // erase
+    BUFFER[pos2] = 0;
+    BUFFER[pos2+1] = 0;
+  );
+
+  (syncmode && (play_state&1))
+    || playmode ?  pos+=1;
+  pos>=bufsize ? pos=0;
+
+//  );
+
+@gfx
+  gfx_clear=0;
+  gfx_a=1;
+  h2 = gfx_h * 0.5;
+  gfx_x=0;
+  gfx_y = h2;
+  gfx_r=1; gfx_g=1; gfx_b=1;
+  bx = 0;
+  bxadd = bufsize / gfx_w;
+  x = 0;
+  loop( gfx_w,
+    xx = x;
+    n = ( BUFFER[bx*2] + BUFFER[(bx*2)+1] ) * 0.5;
+    yy = h2 + ( n * h2 );
+    drawmode==1 ? ( gfx_x=xx; gfx_y=yy; gfx_setpixel(1,1,1); ) :
+    drawmode==2 ? gfx_lineto(xx,yy,0);
+    x += 1;
+    bx += bxadd;
+  );
+  //mode==0 ? ( gfx_r=0.5; gfx_g=0.5; gfx_b=0.5; ) :
+  mode==1 ? ( gfx_r=1; gfx_g=0; gfx_b=0; ) :
+  mode==2 ? ( gfx_r=0; gfx_g=1; gfx_b=0; ) :
+  mode==3 ? ( gfx_r=0; gfx_g=0; gfx_b=1; ) :
+  mode==4 ? ( gfx_r=1; gfx_g=1; gfx_b=1; );
+  x = pos / bufsize * gfx_w;
+  gfx_x = x;
+  gfx_y = 0;
+  gfx_lineto(x,gfx_h,0);

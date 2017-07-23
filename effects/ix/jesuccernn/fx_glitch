@@ -1,0 +1,492 @@
+desc:fx_glitch :: ccernn.2009 :: v0.0.15
+//--------------------------------------------------
+
+slider1:  1    <0,2,1      {off,grid,wave}>draw mode
+slider2:  1    <0,3,1      {none,trigger,all}>prob mode
+slider3:  1    <0,1,1      {free,sticky}>play mode
+slider4:  8    <1,64,1     >num  beats
+slider5:  2    <1,64,1     >num  slices
+slider6:  0.01 <0,0.5,0.001>fade in/out
+slider7:  1    <0,8,0.001  >play speed
+slider8:  0.25 <0,1        >global probability
+
+slider10: 0.25 <0,1        >skip prob
+slider11: 0.25 <0,1        >reverse prob
+slider12: 0.15 <0,1        >mute prob
+slider13: 0.25 <0,1        >stutter prob
+slider14: 0.25 <0,1        >pitch prob
+slider15: 0    <0,1        >input prob
+slider16: 0    <0,1        >output prob
+
+slider18: 4    <0,64,1     >max skip
+slider19: 4    <1,64,1     >max stutter
+slider20: 0.5  <0,1        >max pitch
+slider21: 0    <0,32,1     >max input channel
+slider22: 0    <0,32,1     >max output channel
+
+@init
+//ext_noinit    =  1;
+  _Buffer       =  65536;
+  _Sliders      =  1024;
+  buf_RecPos    =  0;
+  buf_PlayPos   =  0;
+  snc_PrevBeat  = -1;
+  snc_PrevSlice = -1;
+  max_io        =  0;
+
+@serialize
+  file_mem(0,_Sliders,4096;)
+
+@slider
+
+  _Draw      = slider1;
+  _Mode      = slider2;
+  _PlayMode  = slider3;
+  _NumBeats  = slider4;
+  _NumSlices = slider5;
+  _Xfade     = slider6;
+  _PlaySpeed = slider7;
+  _GlobProb  = slider8;
+
+  _SkipProb  = slider10;
+  _RevProb   = slider11;
+  _MuteProb  = slider12;
+  _StutProb  = slider13;
+  _PitchProb = slider14;
+  _IChanProb = slider15;
+  _OChanProb = slider16;
+
+  _SkipMax   = slider18;
+  _StutMax   = slider19;
+  _PitchMax  = slider20;
+  _IChanMax  = slider21;
+  _OChanMax  = slider22;
+
+  max_io = 0;
+  _IChanMax>max_io ? max_io=_IChanMax;
+  _OChanMax>max_io ? max_io=_OChanMax;
+
+//--------------------------------------------------
+@block
+//--------------------------------------------------
+
+  // discontinuity in play_position -> jump
+
+  prev_playpos += (samplesblock/srate);
+  cur_playpos  = play_position;
+  diff_playpos = abs(play_position - prev_playpos);
+  diff_playpos > diff_max ? diff_max = diff_playpos;
+  diff_playpos > 0.001 ? (
+    snc_PrevState = 0; // force recalc
+  );
+  prev_playpos = play_position;
+
+  // play state
+
+  play_state & 1 ? (
+    snc_PrevState==0 ? (
+      snc_Start     = beat_position;
+      buf_RecPos    = 0;
+      buf_PlayPos   = 0;
+      snc_PrevBeat  = -1;
+      snc_PrevSlice = -1;
+    );
+  ) : buf_PlayAdd = 0;
+  snc_PrevState = play_state;
+
+  // triggers
+
+  trigger==1 ? memset(_Sliders,0,4096);
+  trigger==2 ? memset(_Sliders,1,4096);
+  trigger==4 ? (
+    i = 0;
+    loop( 4096,
+      _Sliders[i] = 1 - _Sliders[i];
+      i+=1;
+    );
+  );
+  trigger==8 ? (
+    i = 0;
+    loop( 4096,
+      _Sliders[i] = rand(1);
+      i+=1;
+    );
+  );
+  trigger==16 ? (
+    i = 0;
+    loop( 4096,
+      n = rand(1) * _GlobProb;
+      _Sliders[i] = _Sliders[i] - (_GlobProb*0.5) + n;
+      i+=1;
+    );
+  );
+
+  // sync
+
+  snc_Pos = beat_position - snc_Start;
+  snc_Pos>=_NumBeats ? while(
+    snc_Pos-=_NumBeats;
+    snc_Pos>=_NumBeats;
+  );
+  snc_Pos<0 ? while(
+    snc_Pos+=_NumBeats;
+    snc_Pos<0
+  );
+  snc_BeatSize  = srate*(60/tempo);
+  snc_Add       = 1 / snc_BeatSize;
+  buf_RecSize   = (snc_BeatSize * _NumBeats);
+  buf_SliceSize = (snc_BeatSize / _NumSlices);
+  buf_FadeSize  = buf_SliceSize * (_Xfade);
+
+  // midi
+
+//  _Mode >= 2 ? (    // live,seq
+
+  while (
+    midirecv(midi_ofs,midi_msg1,midi_msg23) ? (
+      midi_msg = midi_msg1 & 240;
+
+      // ctrl
+
+      midi_msg == 11*16 ? (
+        midi_cc    = midi_msg23 & 127;
+        midi_ccamt = ((midi_msg23/256)|0) / 127;
+        midi_cc==2 ? (midi_cc_skip=midi_ccamt)  :
+        midi_cc==3 ? (midi_cc_stut=midi_ccamt)  :
+        midi_cc==4 ? (midi_cc_pitch=midi_ccamt) :
+        midi_cc==5 ? (midi_cc_input=midi_ccamt) :
+        midi_cc==6 ? (midi_cc_output=midi_ccamt);
+      ) : midi_cc=0;
+
+      // note on
+
+      (midi_msg == 9*16) ? (
+        midi_note = midi_msg23 & 127;
+        midi_vel  = ((midi_msg23/256)|0) / 127;
+        //midi_freq = 440 * pow(2.0,(midi_note-69.0)/12.0);
+        midi_note==36 ? midi_do_skip=1 :
+        midi_note==37 ? midi_do_rev=1 :
+        midi_note==38 ? midi_do_mute=1 :
+        midi_note==39 ? midi_do_stut=1 :
+        midi_note==40 ? midi_do_pitch=1 :
+        midi_note==41 ? midi_do_ichan=1 :
+        midi_note==42 ? midi_do_ochan=1 :
+        (
+          midi_do_slice=1;
+          midi_playing = midi_note;
+        );
+      );
+
+      // note off
+
+      (midi_msg == 8*16) ?
+      (
+        midi_note = midi_msg23 & 127;
+        midi_note==36 ? midi_do_skip=0 :
+        midi_note==37 ? midi_do_rev=0 :
+        midi_note==38 ? midi_do_mute=0 :
+        midi_note==39 ? midi_do_stut=0 :
+        midi_note==40 ? midi_do_pitch=0 :
+        midi_note==41 ? midi_do_ichan=0 :
+        midi_note==42 ? midi_do_ochan=0 :
+        (
+          midi_note==midi_playing ? (
+            midi_do_slice=0;
+            //midi_playing = 0;
+          );
+        );
+
+      );
+      midisend(midi_ofs,midi_msg1,midi_msg23);
+    );
+  );
+
+//  );
+
+//--------------------------------------------------
+@sample
+//--------------------------------------------------
+
+  play_state & 1 ? (
+
+    // beat/slice
+
+    snc_Beat  = floor(snc_Pos);
+    snc_Frac  = snc_Pos - snc_Beat;
+    snc_Slice = floor(snc_Frac * _NumSlices);
+    snc_Step  = (snc_Beat * _NumSlices) + snc_Slice;
+    snc_SFrac = (snc_Frac * _NumSlices) - snc_Slice;
+
+//----------
+
+    // new slice?
+
+    snc_Slice!=snc_PrevSlice || snc_Beat!=snc_PrevBeat ? (
+
+      // reset a few things
+
+      buf_PlayAdd = _PlaySpeed;
+      volume = 1;
+      _PlayMode==1 ? buf_PlayPos = buf_RecPos; // (snc_Slice*buf_SliceSize);
+
+      probscale = _GlobProb * _Sliders[snc_Step];
+
+// --- slice selection ---
+
+      // midi slice
+
+      midi_do_slice ? (
+        slice = midi_playing-48;
+        slice < 0 ? slice=0;
+        slice > (_NumBeats*_NumSlices) ? slice = (_NumBeats*_NumSlices);
+      ) : slice = snc_Step;
+
+      // skip?
+
+      prob = _SkipProb * probscale;
+      rand(1) <= prob || midi_do_skip ? (
+        do_skip = 1;
+        slice += floor(rand(_SkipMax*2)-_SkipMax);
+        slice < 0 ? slice += (_NumBeats*_NumSlices);
+        slice > (_NumBeats*_NumSlices) ? slice -= (_NumBeats*_NumSlices);
+      ) : do_skip = 0;
+
+
+    (midi_do_slice || do_skip) ?
+      buf_PlayPos = buf_SliceSize * slice;
+
+// --- slice playback ---
+
+      // reverse?
+
+      prob = _RevProb * probscale;
+      rand(1) <= prob || midi_do_rev ? (
+        do_rev = 1;
+        buf_PlayAdd = -buf_PlayAdd;
+      ) : do_rev = 0;
+
+      // mute?
+
+      prob = _MuteProb * probscale;
+      rand(1) <= prob || midi_do_mute ? (
+        do_mute = 1;
+        volume = 0;
+      ) : (
+        do_mute = 0;
+        volume = 1;
+      );
+
+      // stutter?
+
+      prob = _StutProb * probscale;
+      rand(1) <= prob || midi_do_stut ? (
+        do_stut = 1;
+        stut_start = buf_PlayPos;
+        stut_num   = floor(rand(_StutMax))+1;
+        stut_size  = buf_SliceSize / stut_num;
+        stut_count = stut_size;
+        stut_xfade = _Xfade / stut_num;
+      ) : do_stut = 0;
+
+      // pitch?
+
+      prob = _PitchProb * probscale;
+      rand(1) <= prob || midi_do_pitch ? (
+        do_pitch = 1;
+        n = (rand(2)-1) * _PitchMax;
+        n < 0 ? buf_PlayAdd *= (1+(n*0.5));
+        n > 0 ? buf_PlayAdd *= (n+1);
+      ) : do_pitch = 0;
+
+// --- channels
+
+      // input channel
+
+      //ichannel = 0;
+      prob = _IChanProb * probscale;
+      rand(1) <= prob || midi_do_ichan ? (
+        do_ichan = 1;
+        ichannel = floor(rand(_IChanMax)) + 1;
+        ichannel *= 2;
+      ) : do_ichan = 0;
+
+      // output channel
+
+      //ochannel = 0;
+      prob = _OChanProb * probscale;
+      rand(1) <= prob || midi_do_ochan ? (
+        do_ochan = 1;
+        ochannel = floor(rand(_OChanMax)) + 1;
+        ochannel *= 2;
+      ) : do_ochan = 0;
+
+    ); // new slice
+
+// ---
+
+    // fade in/out
+    fadevol = 1;
+    do_stut ? (
+      _Xfade > 0 ? (
+        stut_phase = 1-(stut_count/stut_size);
+        stut_phase <=    stut_xfade  ? fadevol =    stut_phase  / stut_xfade :
+        stut_phase >= (1-stut_xfade) ? fadevol = (1-stut_phase) / stut_xfade;
+      );
+      stut_count -= 1;
+      stut_count <= 0 ? (
+        stut_num -= 1;
+        stut_num >= 0 ? (
+          stut_count = stut_size;
+          buf_PlayPos = stut_start;
+        ) : do_stut=0;
+      );
+    ) :
+    _Xfade > 0 ? (
+      snc_SFrac <= _Xfade ? fadevol = snc_SFrac / _Xfade :
+      snc_SFrac >= (1-_Xfade) ? fadevol = (1-snc_SFrac) / _Xfade;
+    );
+
+    // input
+
+    do_ichan ? (
+      input1 = spl(ichannel  );
+      input2 = spl(ichannel+1);
+    ) : (
+      input1 = spl0;
+      input2 = spl1;
+    );
+
+    _Buffer[(buf_RecPos*2)  ] = input1;
+    _Buffer[(buf_RecPos*2)+1] = input2;
+
+    // clear
+
+    n = 0;
+    loop( (max_io*2)+2,
+      spl(n) = 0;
+      n += 1;
+    );
+
+    // output
+
+    output1 = _Buffer[(buf_PlayPos*2)  ] * volume * fadevol;
+    output2 = _Buffer[(buf_PlayPos*2)+1] * volume * fadevol;
+
+    do_ochan ? (
+      spl(ochannel  ) = output1;
+      spl(ochannel+1) = output2;
+    ) : (
+      spl0 = output1;
+      spl1 = output2;
+    );
+
+    // update play pos
+
+    buf_PlayPos += buf_PlayAdd;
+    buf_PlayPos >= buf_RecSize ? buf_PlayPos -= buf_RecSize;
+    buf_PlayPos <  0 ? buf_PlayPos += buf_RecSize;
+
+    // prepare for next sample
+
+    buf_RecPos += 1;
+    buf_RecPos %= buf_RecSize;
+
+    snc_PrevBeat  = snc_Beat;
+    snc_PrevSlice = snc_Slice;
+
+    snc_Pos += snc_Add;
+
+  ); // play_state = 1
+
+//--------------------------------------------------
+@gfx
+//--------------------------------------------------
+
+  gfx_clear = 0;
+  gfx_a = 1;
+  beatwidth = gfx_w / _NumBeats;
+  slicewidth = beatwidth / _NumSlices;
+
+  // grid
+
+  _Draw >= 1 ? (
+
+    x1 = 0;
+    loop( _NumBeats,
+      x2 = x1 + slicewidth;
+      loop( _NumSlices-1,
+        gfx_r=0.3; gfx_g=0.3; gfx_b=0.3;
+        gfx_x = x2;
+        gfx_y = 0;
+        gfx_lineto(x2,gfx_h,0);
+        x2 += slicewidth;
+      );
+      gfx_r=1; gfx_g=1; gfx_b=1;
+      gfx_x=x1; gfx_y=0;
+      gfx_lineto(x1,gfx_h,0);
+      x1 += beatwidth;
+    );
+
+  ); // draw>=1
+
+  // buffer
+
+  _Draw >= 2 ? (
+
+    gfx_r=0; gfx_g=0; gfx_b=1;
+    gfx_x = 0;
+    gfx_y = (gfx_h*0.5);
+    x=0;
+    i=0;
+    j = (buf_RecSize/gfx_w);
+    loop( gfx_w,
+      n = _Buffer[i];
+      y = (gfx_h*0.5) + (n*(gfx_h*0.5));
+      gfx_lineto(x,y,0);
+      x += 1;
+      i += j;
+    );
+
+  ); // draw>=2
+
+  // record cursor
+
+  _Draw >= 1 ? (
+
+    gfx_r=1; gfx_g=0; gfx_b=0;
+    x = (buf_RecPos/buf_RecSize) * gfx_w;
+    gfx_x = x;
+    gfx_y = 0;
+    gfx_lineto(x,gfx_h,0);
+
+    // play cursor
+
+    gfx_r=1; gfx_g=1; gfx_b=0;
+    x = (buf_PlayPos/buf_RecSize) * gfx_w;
+    gfx_x = x;
+    gfx_y = 0;
+    gfx_lineto(x,gfx_h,0);
+
+    // sliders
+    i = 0;
+    loop( _NumBeats*_NumSlices,
+      x = (slicewidth * i) + 1;
+      y = (1-_Sliders[i]) * (gfx_h-3);
+      gfx_r=0; gfx_g=1; gfx_b=0; gfx_a=0.75;
+      gfx_x = x;
+      gfx_y = y;
+      gfx_rectto(x+slicewidth,y+3);
+      i+=1;
+    );
+
+    // mouse
+
+    mouse_cap == 1 ? (
+      i = floor((mouse_x/gfx_w) * (_NumBeats*_NumSlices));
+      n = 1 - (mouse_y/gfx_h);
+      n>1 ? n=1;
+      n<0 ? n=0;
+      _Sliders[i] = n;
+    );
+
+  ); // draw>=1

@@ -1,0 +1,30 @@
+desc:fx_blur :: ccernn.2009 :: v0.0.1
+slider1: 0.5 < 0, 1,   0.001 > size
+slider2: 0.2 < 0, 1,   0.001 > decay
+slider3: 0.5 < 0, 1, 0.001   > xfade
+slider4: 0.7 < 0, 1, 0.001   > volume
+slider5: 0   < 0, 1, 1       > freeze
+@init
+  BUF   = 1000;
+  BUF_t = BUF + 65536;
+  pos = 0;
+@slider
+  bs = slider1 / 2;
+  d  = slider2;
+  d2 = slider3 / 10;
+  v  = slider4 * 2;
+  freeze = slider5;
+  bufsize_t = srate * (bs*bs);
+  decay_t   = d*d;
+  decay2    = d2*d2;
+  vol       = v*v;
+@sample
+  bufsize += ( bufsize_t - bufsize ) * decay2;
+  decay += ( decay_t - decay ) * decay2;
+  in = (spl0+spl1)*0.5;
+  !freeze ? BUF_t[pos] = in;
+  BUF[pos] += ( BUF_t[pos] - BUF[pos] ) * decay;
+  out = BUF[pos];
+  pos += 1;
+  pos>=bufsize ? pos=0;
+  spl0 = spl1 = out*vol;

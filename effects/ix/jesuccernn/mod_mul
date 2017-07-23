@@ -1,0 +1,13 @@
+desc:mod_mul :: ccernn.2009 :: v0.0.0
+slider1: 0 < 0,63,1 > input 1
+slider2: 1 < 0,63,1 > input 2
+slider3: 0 < 0,63,1 > output
+@slider
+  input1 = slider1;
+  input2 = slider2;
+  output = slider3;
+@init
+  phase = 0;
+@sample
+  spl(output) = spl(input1) * spl(input2);
+

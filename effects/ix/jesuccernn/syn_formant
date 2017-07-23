@@ -1,0 +1,125 @@
+desc:syn_formant :: ccernn.2009 :: v0.0.1
+
+slider1:  650    <  100, 1000, 1    > formant.freq 1
+slider2: 1300    <  500, 4000, 1    > 2
+slider3: 2050    < 1000, 6000, 1    > 3
+slider4:  100    <    0,  999, 0.01 > formant bw 1
+slider5:  150    <    0,  999, 0.01 > 2
+slider6:  200    <    0,  999, 0.01 > 3
+slider7:    1    <    0,    1, 0.01 > formant ampl 1
+slider8:    0.5  <    0,    1, 0.01 > 2
+slider9:    0.25 <    0,    1, 0.01 > 3
+slider10: 500    <    1, 1000, 1    > speed
+slider11: 0.5    <    0,    1, 0.01 > volume
+slider12:  10    <    1,  100, 1    > env
+
+@init
+
+  Ta    = 1/srate;
+  PiTa  = $pi*Ta;
+  PiTa2 = Pita*2;
+  phase = 0;
+  freq  = 440;
+  amp_t = 0;
+
+@slider
+
+  FR1_t   = slider1;  // formant filter freq 1
+  FR2_t   = slider2;  // filter 2..
+  FR3_t   = slider3;  // ..and 3
+  FB1_t   = slider4;  // bw
+  FB2_t   = slider5;  // 
+  FB3_t   = slider6;  //
+  FA1_t   = slider7;  // ampl
+  FA2_t   = slider8;  //
+  FA3_t   = slider9;  //
+  speed   = slider10;
+  volume  = slider11;
+  env     = 1/(slider12*slider12);
+
+@block
+  while (
+    midirecv(ofs,msg1,msg23) ? (
+      m = msg1 & 240;
+      (m == 9*16) ? ( // note on
+        note = msg23 & 127;
+        vel  = (msg23/256)|0;
+        freq = 440 * pow(2.0,(note-69.0)/12.0);
+        playing = note;
+        amp_t  = vel/127;
+      ) :
+      (m == 8*16) ? ( // note off
+        note = msg23 & 127;
+        note==playing ? (
+          amp_t = 0;
+        );
+      );
+      midisend(ofs,msg1,msg23);
+    ); // midirecv
+  ); // whle
+
+
+@sample
+
+  //play_state & 1 ? (
+
+    phase += 1 / (srate/freq);
+    phase<0  ? while( phase+=1; phase<0  );
+    phase>=1 ? while( phase-=1; phase>=1 );
+    speed>0 ? muller=Ta/(speed/1000) : muller=1;
+    in = (phase*2)-1; // saw
+    out = 0;
+
+    amp += (amp_t-amp) * env;
+
+    // formant filters
+
+    FR1 += (FR1_t-FR1)*muller;
+    FB1 += (FB1_t-FB1)*muller;
+    FA1 += (FA1_t-FA1)*muller;
+  
+    F1_x = -(PiTa*FB1);
+    F1_r = (pow(2,F1_x*1.442695041));
+    F1_c = -F1_r*F1_r;
+    F1_b = F1_r*2*cos(PiTa2*FR1);
+    F1_a = 1-F1_b-F1_c;
+    F1_n  = (in*(F1_a*FA1))+(F1_b*F1_z1)+(F1_c*F1_z2);
+    F1_z2 = F1_z1;
+    F1_z1 = F1_n;
+
+    out += F1_n;
+
+    FR2 += (FR2_t-FR2)*muller;
+    FB2 += (FB2_t-FB2)*muller;
+    FA2 += (FA2_t-FA2)*muller;
+  
+    F2_x = -(PiTa*FB2);
+    F2_r = (pow(2,F2_x*1.442695041));
+    F2_c = -F2_r*F2_r;
+    F2_b = F2_r*2*cos(PiTa2*FR2);
+    F2_a = 1-F2_b-F2_c;
+    F2_n  = (in*(F2_a*FA2))+(F2_b*F2_z1)+(F2_c*F2_z2);
+    F2_z2 = F2_z1;
+    F2_z1 = F2_n;
+
+    out += F2_n;
+
+    FR3 += (FR3_t-FR3)*muller;
+    FB3 += (FB3_t-FB3)*muller;
+    FA3 += (FA3_t-FA3)*muller;
+
+    F3_x = -(PiTa*FB3);
+    F3_r = (pow(2,F3_x*1.442695041));
+    F3_c = -F3_r*F3_r;
+    F3_b = F3_r*2*cos(PiTa2*FR3);
+    F3_a = 1-F3_b-F3_c;
+    F3_n  = (in*(F3_a*FA3))+(F3_b*F3_z1)+(F3_c*F3_z2);
+    F3_z2 = F3_z1;
+    F3_z1 = F3_n;
+
+    out += F3_n;
+
+    spl0 = spl1 = out * volume * amp;
+
+  //);
+

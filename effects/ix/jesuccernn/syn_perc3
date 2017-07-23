@@ -1,0 +1,199 @@
+desc:syn_perc3 :: ccernn.2009 :: v0.0.14
+//--------------------------------------------------
+slider1: -1     <-1, 127, 1     > midi note (-1=all)
+slider2:  0     < 0, 7,   1       {none,const,noise,audio,saw,inv.saw,squ,sin}> osc.1 ---------- ---------- ----------
+slider3:  0.75  < 0, 1,   0.001 > volume
+slider4:  20    < 0, 100, 0.001 > volume decay
+slider5:  0.5   < 0, 1,   0.001 > pitch
+slider6:  20    < 0, 100, 0.001 > pitch decay
+slider7:  0     < 0, 4,   1       {bypass,lowpass,highpass,bandpass,notch} > filter type
+slider8:  0.5   < 0, 1,   0.001 > filter freq
+slider9:  100   < 0, 100, 0.001 > filter freq decay
+slider10: 0.5   < 0, 1,   0.001 > filter bw
+slider11: 7     < 0, 7,   1       {none,const,noise,audio,saw,inv.saw,squ,sin}> osc.2 ---------- ---------- ----------
+slider12: 0.75  < 0, 1,   0.001 > volume
+slider13: 20    < 0, 100, 0.001 > volume decay
+slider14: 0.369 < 0, 1,   0.001 > pitch
+slider15: 20    < 0, 100, 0.001 > pitch decay
+slider16: 0     < 0, 4,   1       {bypass,lowpass,highpass,bandpass,notch} > filter type
+slider17: 0.5   < 0, 1,   0.001 > filter freq
+slider18: 100   < 0, 100, 0.001 > filter freq decay
+slider19: 0.5   < 0, 1,   0.001 > filter bw
+slider20: 1     < 0, 4,   1       {osc1,osc2,mix : osc1 + osc2,AM : amplitude/ring modulation,PM : phase modulation}> output ---------- ---------- ----------
+slider21: 4     < 0, 10 , 0.001 > crossfade
+slider22: 1     < 1, 10,  0.001 > boost
+slider23: 0.99  < 0, 1,   0.001 > clip
+slider24: 0     < 0, 4,   1       {bypass,lowpass,highpass,bandpass,notch} > filter type
+slider25: 1     < 0, 1,   0.001 > filter freq
+slider26: 1     < 0, 1,   0.001 > filter bw
+slider27: 0.99  < 0, 1,   0.001 > master
+slider28: 100   < 0, 100, 0.001 > master decay
+slider29: 1     < 0, 2,   1       {= replace,+ add,* ring modulat}> mix mode
+//--------------------------------------------------
+@init
+  memset(EVENTS,-1,65536);
+  EVENTS = 0;
+  PI2    = $pi*2;
+  irate  = 1/srate;
+  irat2  = 44100/srate;
+//--------------------------------------------------
+@slider
+  midinote  = slider1;
+  o1_wav    = slider2;
+  o1_vol    = slider3*slider3;
+  o1_vold   = irat2 / max(1,slider4*slider4*slider4);
+  o1_pit    = srate * slider5*slider5*slider5*0.1;
+  o1_pitd   = irat2 / max(1,slider6*slider6*slider6);
+  o1_flt    = slider7;
+  o1_frq    = slider8*slider8*slider8;
+  o1_frqd   = irat2 / max(1,slider9*slider9*slider9);
+  o1_bw     = slider10*slider10;
+  o2_wav    = slider11;
+  o2_vol    = slider12*slider12;
+  o2_vold   = irat2 / max(1,slider13*slider13*slider13);
+  o2_pit    = srate * slider14*slider14*slider14*0.1;
+  o2_pitd   = irat2 / max(1,slider15*slider15*slider15);
+  o2_flt    = slider16;
+  o2_frq    = slider17*slider17*slider17;
+  o2_frqd   = irat2 / max(1,slider18*slider18*slider18);
+  o2_bw     = slider19*slider19;
+  mode      = slider20;
+  fade      = irat2 / max(1,slider21*slider21);
+  boost     = slider22;
+  clip      = slider23*slider23;
+  out_flt   = slider24;
+  out_frq   = slider25*slider25*slider25;
+  out_bw    = slider26*slider26;
+  master    = slider27*slider27;
+  mas_d     = irat2 / max(1,slider28*slider28*slider28);
+  mixmode   = slider29;
+//--------------------------------------------------
+@block
+  //---------- midi
+  memset(EVENTS,-1,samplesblock); // ??
+  while (
+    midirecv(offset,msg1,msg23) ? (
+      msg = msg1 & 240;
+      (msg == 9*16) ? (
+        _note = msg23 & 127;
+        ((midinote<0) || (midinote==_note)) ? (
+          _vel = ((msg23/256)|0) / 127;
+          _freq   = 220 * pow(2.0,(_note-36.0) / 12);
+          EVENTS[offset*2] = _vel;
+          EVENTS[(offset*2)+1] = _freq;
+        );
+      );
+      midisend(offset,msg1,msg23);
+    );
+  );
+  offset = 0;
+//--------------------------------------------------
+@sample
+  //---------- midi
+  EVENTS[offset*2] > 0 ? (
+    midivel  = EVENTS[offset*2];
+    midifreq = EVENTS[(offset*2)+1];
+    o1_volc = o1_vol;
+    o1_pitc = o1_pit;
+    o1_frqc = o1_frq;
+    o2_volc = o2_vol;
+    o2_pitc = o2_pit;
+    o2_frqc = o2_frq;
+    out_frqc = out_frq;
+    mas_c = master;
+    midinote<0 ? o2_pitc = midifreq;
+  );
+  EVENTS[offset*2] = -1;
+  offset += 1;
+  //---------- osc 1
+  o1 = 0;                          // none
+  o1_wav==1 ? o1 = 1             : // const
+  o1_wav==2 ? o1 = rand(2)-1     : // noise
+  o1_wav==3 ? o1 = spl0          : // audio
+  o1_wav==4 ? o1 = (ph1*2)-1     : // saw
+  o1_wav==5 ? o1 = 1-(ph1*2)     : // inv.saw
+  o1_wav==6 ? o1 = ph1<0.5?1:-1  : // squ
+  o1_wav==7 ? o1 = sin(ph1*PI2);   // sin
+  o1 *= o1_volc;
+  //---------- filter 1
+  o1_flt > 0 ? (
+    _L = o1_z2 + o1_frqc * o1_z1;
+    _H = o1 - _L - o1_bw * o1_z1;
+    _B = o1_frqc * _H + o1_z1;
+    _N = _H + _L;
+    o1_z1 = _B;
+    o1_z2 = _L;
+    o1_flt==1 ? o1 = _L :
+    o1_flt==2 ? o1 = _H :
+    o1_flt==3 ? o1 = _B :
+    o1_flt==4 ? o1 = _N;
+  );
+  //---------- phase distort
+  pp2 = ph2;
+  mode==4 ? (
+    pp2 += o1;
+    pp2 >= 1 ? pp2 -= 1;
+  );
+  //---------- osc 2
+  o2 = 0;                          // none
+  o2_wav==1 ? o2 = 1             : // const
+  o2_wav==2 ? o2 = rand(2)-1     : // noise
+  o2_wav==3 ? o2 = spl1          : // audio
+  o2_wav==4 ? o2 = (pp2*2)-1     : // saw
+  o2_wav==5 ? o2 = 1-(pp2*2)     : // inv.saw
+  o2_wav==6 ? o2 = pp2<0.5?1:-1  : // squ
+  o2_wav==7 ? o2 = sin(pp2*PI2);   // sin
+  o2 *= o2_volc;
+  //---------- filter 2
+  o2_flt > 0 ? (
+    _L = o2_z2 + o2_frqc * o2_z1;
+    _H = o2 - _L - o2_bw * o2_z1;
+    _B = o2_frqc * _H + o2_z1;
+    _N = _H + _L;
+    o2_z1 = _B;
+    o2_z2 = _L;
+    o2_flt==1 ? o2 = _L :
+    o2_flt==2 ? o2 = _H :
+    o2_flt==3 ? o2 = _B :
+    o2_flt==4 ? o2 = _N;
+  );
+  //---------- combine
+  mode==0 ? out = o1 :
+  mode==1 ? out = o2 :
+  mode==2 ? out = o1+o2 :
+  mode==3 ? out = o1*o2 :
+  mode==4 ? out = o2;
+  out *= midivel;
+  out *= mas_c;// master;
+  out = ( o0 += (out-o0) * fade );
+  out *= boost;
+  //out = min(clip,max(-clip,out));
+  //---------- filter
+  out_flt > 0 ? (
+    _L = out_z2 + out_frqc * out_z1;
+    _H = out - _L - out_bw * out_z1;
+    _B = out_frqc * _H + out_z1;
+    _N = _H + _L;
+    out_z1 = _B;
+    out_z2 = _L;
+    out_flt==1 ? out = _L :
+    out_flt==2 ? out = _H :
+    out_flt==3 ? out = _B :
+    out_flt==4 ? out = _N;
+  );
+  out = min(clip,max(-clip,out));
+  mixmode==0 ? ( spl0 =out; spl1 =out; ) :
+  mixmode==1 ? ( spl0+=out; spl1+=out; ) :
+  mixmode==2 ? ( spl0+=out; spl1*=out; );
+  //---------- update
+  ph1 += o1_pitc*irate;
+  ph1 >= 1 ? ph1 -= 1;
+  o1_volc += (o1_volt-o1_volc) * o1_vold;
+  o1_pitc += (o1_pitt-o1_pitc) * o1_pitd;
+  o1_frqc += (o1_frqt-o1_frqc) * o1_frqd;
+  ph2 += o2_pitc*irate;
+  ph2 >= 1 ? ph2 -= 1;
+  o2_volc += (o2_volt-o2_volc) * o2_vold;
+  o2_pitc += (o2_pitt-o2_pitc) * o2_pitd;
+  o2_frqc += (o2_frqt-o2_frqc) * o2_frqd;
+  mas_c += (mas_t-mas_c) * mas_d;

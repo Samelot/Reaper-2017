@@ -1,0 +1,5 @@
+desc:midi_kill :: ccernn.2009 :: v0.0.1
+@block
+  while (
+    midirecv(offset,msg1,msg23);
+  );

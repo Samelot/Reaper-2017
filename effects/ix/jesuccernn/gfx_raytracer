@@ -1,0 +1,230 @@
+desc:gfx_raytracer :: ccernn.2009 :: v0.0.2
+slider1:  0    <-50, 50 > eye.x
+slider2:  0    <-50, 50 > eye.y
+slider3: -1    <-50, 50 > eye.z
+slider4:  0.1  < 0,  1  > ambient light
+slider5: -1    <-50, 50 > light.dir.x
+slider6: -0.5  <-50, 50 > light.dir.y
+slider7: -0.5  <-50, 50 > light.dir.z
+slider8: 0 <0,503,0.01> theta
+@init
+  theta = 0;
+  screen_z  = 0;
+  temp_draw = 1;
+  do_draw   = 0;
+  SPH_NUM  = 4;
+  SPH_X   =1000 + (SPH_NUM*0);
+  SPH_Y   =1000 + (SPH_NUM*1);
+  SPH_Z   =1000 + (SPH_NUM*2);
+  SPH_RAD =1000 + (SPH_NUM*3);
+  SPH_REF =1000 + (SPH_NUM*4);
+  SPH_RF  =1000 + (SPH_NUM*5);
+  SPH_R   =1000 + (SPH_NUM*6);
+  SPH_G   =1000 + (SPH_NUM*7); 
+  SPH_B   =1000 + (SPH_NUM*8);
+  SPH_X[0]   = 0;
+  SPH_Y[0]   = 1;
+  SPH_Z[0]   = 0;
+  SPH_RAD[0] = 0.7;
+  SPH_REF[0] = 1;
+  SPH_RF[0]  = 0.2;
+  SPH_R[0]   = 1;
+  SPH_X[1]   = 0;
+  SPH_Y[1]   = 2;
+  SPH_Z[1]   = 0;
+  SPH_RAD[1] = 0.7;
+  SPH_REF[1] = 1;
+  SPH_RF[1]  = 0.4;
+  SPH_G[1]   = 1;
+  SPH_X[2]   = 0;
+  SPH_Z[2]   = 1;
+  SPH_Y[2]   = 0;
+  SPH_RAD[2] = 0.7;
+  SPH_REF[2] = 1;
+  SPH_RF[2]  = 0.6;
+  SPH_B[2]   = 1;
+  SPH_X[3]   = 0;
+  SPH_Y[3]   = 12;
+  SPH_Z[3]   = 10;
+  SPH_RAD[3] = 10;
+  SPH_REF[3] = 1;
+  SPH_RF[3]  = 1;
+  SPH_R[3]   = 1;
+  SPH_G[3]   = 1;
+  SPH_B[3]   = 1;
+@slider
+  eye_x = slider1;
+  eye_y = slider2;
+  eye_z = slider3;
+  ambient  = slider4;
+  light_dirx = slider5;
+  light_diry = slider6;
+  light_dirz = slider7;
+  theta = slider8;
+  il = 1 / sqrt( (light_dirx*light_dirx)
+               + (light_diry*light_diry)
+               + (light_dirz*light_dirz) );
+  light_dirx *= il;
+  light_diry *= il;
+  light_dirz *= il;
+  temp_draw=1;
+@block
+  trigger==1 ? do_draw=0;
+  trigger==2 ? do_draw=1;
+  trigger==4 ? temp_draw=1;
+@gfx
+  gfx_a=1;
+  gfx_clear=0;
+  do_draw==1 || temp_draw==1 ? (
+    theta += 0.1;
+    SPH_X[0] =      (sin(theta));
+    SPH_Z[0] = 3 +  (cos(theta));
+    SPH_X[1] =      (sin(theta + (2*$pi*(1/3)) ));
+    SPH_Z[1] = 3 +  (cos(theta + (2*$pi*(1/3)) ));
+    SPH_X[2] =      (sin(theta + (2*$pi*(2/3)) ));
+    SPH_Z[2] = 3 +  (cos(theta + (2*$pi*(2/3)) ));
+    y = -1;
+    loop( gfx_h,
+      x = -1;
+      loop( gfx_w,
+        ray_origx = eye_x;
+        ray_origy = eye_y;
+        ray_origz = eye_z;
+        ray_dirx  = x - ray_origx;
+        ray_diry  = y - ray_origy;
+        ray_dirz  = 0 - eye_z;
+        inv_len   = 1 / sqrt( (ray_dirx*ray_dirx)
+                            + (ray_diry*ray_diry)
+                            + (ray_dirz*ray_dirz) );
+        ray_dirx *= inv_len;
+        ray_diry *= inv_len;
+        ray_dirz *= inv_len;
+        i = 0;
+        index = -1;
+        closest = 1000000;
+        loop( SPH_NUM,
+          len = (SPH_X[i]*SPH_X[i])
+              + (SPH_Y[i]*SPH_Y[i])
+              + (SPH_Z[i]*SPH_Z[i]);
+          t   = (SPH_X[i]*ray_dirx)
+              + (SPH_Y[i]*ray_diry)
+              + (SPH_Z[i]*ray_dirz);
+          t >= 0 ? (
+            tt =   (SPH_RAD[i]*SPH_RAD[i]) - len + (t*t);
+            tt >= 0 ? (
+              // ray hits the sphere
+              dist = t - sqrt(tt);
+              dist < closest ? (
+                closest = dist;
+                index = i;
+              );
+            );
+          );
+          i+=1;
+        );
+        shade = 0;
+        index != -1 ? (
+          intersection_x = ray_dirx * closest;
+          intersection_y = ray_diry * closest;
+          intersection_z = ray_dirz * closest;
+          normal_x = intersection_x - SPH_X[index];
+          normal_y = intersection_y - SPH_Y[index];
+          normal_z = intersection_z - SPH_Z[index];
+          normal_x /= SPH_RAD[index];
+          normal_y /= SPH_RAD[index];
+          normal_z /= SPH_RAD[index];
+          shade = (normal_x*light_dirx)
+                + (normal_y*light_diry)
+                + (normal_z*light_dirz);
+          shade < ambient ? shade=ambient;
+          in_shadow = 0;
+          j = 0;
+          loop(SPH_NUM,
+            j != index ? (
+              rsc_x = SPH_X[j] - intersection_x;
+              rsc_y = SPH_Y[j] - intersection_y;
+              rsc_z = SPH_Z[j] - intersection_z;
+              len = (rsc_x*rsc_x)
+                  + (rsc_y*rsc_y)
+                  + (rsc_z*rsc_z);
+              t = (rsc_x*light_dirx)  // was dir
+                + (rsc_y*light_diry)
+                + (rsc_z*light_dirz);
+              t >= 0 ? (
+                tt = SPH_RAD[j]*SPH_RAD[j] - len + (t*t);
+                tt >= 0 ? in_shadow=1;
+              );
+            );
+            j+=1;
+          );
+        );
+        refl_shade = 0;
+        SPH_REF[index]==1 ? (
+          refl_coef = 2 * ((ray_dirx*normal_x)
+                         + (ray_diry*normal_y)
+                         + (ray_dirz*normal_z));
+          refl_dirx = ray_dirx - (normal_x*refl_coef);
+          refl_diry = ray_diry - (normal_y*refl_coef);
+          refl_dirz = ray_dirz - (normal_z*refl_coef);
+          closest = 1000000;
+          refl_index=-1;
+          j = 0;
+          loop( SPH_NUM,
+            j!=index ? (
+              rsc_x = SPH_X[j] - intersection_x;
+              rsc_y = SPH_Y[j] - intersection_y;
+              rsc_z = SPH_Z[j] - intersection_z;
+              len = (rsc_x*rsc_x)
+                  + (rsc_y*rsc_y)
+                  + (rsc_z*rsc_z);
+              t = (rsc_x*refl_dirx)
+                + (rsc_y*refl_diry)
+                + (rsc_z*refl_dirz);
+              t >= 0 ? (
+                tt = (SPH_RAD[j]*SPH_RAD[j]) - len + (t*t);
+                tt >= 0 ? (
+                  dist = t - sqrt(tt);
+                  dist < closest ? (
+                    closest = dist;
+                    refl_index = j;
+                  );
+                );
+              );
+            );
+            j+=1;
+          );
+          refl_index != -1 ? (
+            refl_intx = (refl_dirx*closest) + intersection_x;
+            refl_inty = (refl_diry*closest) + intersection_y;
+            refl_intz = (refl_dirz*closest) + intersection_z;
+            normal_x = refl_intx - SPH_X[refl_index];
+            normal_y = refl_inty - SPH_Y[refl_index];
+            normal_z = refl_intz - SPH_Z[refl_index];
+            normal_x /= SPH_RAD[refl_index];
+            normal_y /= SPH_RAD[refl_index];
+            normal_z /= SPH_RAD[refl_index];
+            refl_shade = (normal_x*light_dirx)
+                       + (normal_y*light_diry)
+                       + (normal_z*light_dirz);
+            refl_shade < ambient ? refl_shade = ambient;
+          );
+        );
+        in_shadow==1 ? shade*=0.3;
+        //r = (SPH_R[index] + (SPH_R[refl_index]*refl_shade*1.0)) * shade;
+        //g = (SPH_G[index] + (SPH_G[refl_index]*refl_shade*1.0)) * shade;
+        //b = (SPH_B[index] + (SPH_B[refl_index]*refl_shade*1.0)) * shade;
+        r = (SPH_R[index]*shade) + (SPH_R[refl_index]*refl_shade*SPH_RF[index]);
+        g = (SPH_G[index]*shade) + (SPH_G[refl_index]*refl_shade*SPH_RF[index]);
+        b = (SPH_B[index]*shade) + (SPH_B[refl_index]*refl_shade*SPH_RF[index]);
+        r>1 ? r=1;
+        g>1 ? g=1;
+        b>1 ? b=1;
+        gfx_x = (gfx_w*0.5) + (x*gfx_w*0.5);
+        gfx_y = (gfx_h*0.5) + (y*gfx_h*0.5);
+        gfx_setpixel(r,g,b);
+        x += (2/gfx_w);
+      );
+      y += (2/gfx_h);
+    );
+    temp_draw=0;
+  );

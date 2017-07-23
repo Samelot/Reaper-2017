@@ -1,0 +1,74 @@
+desc:syn_binauralbeats :: ccernn.2009 :: v0.0.2
+
+slider1: 0.8 < 0, 1,   0.01 > volume
+slider2: 440 < 0, 999, 0.01 > osc 1 freq
+slider3: 4   < 0, 30,  0.01 > osc 2 freq diff
+slider4: 50  < 1, 200, 0.01 > crossfade
+
+@init
+  phase1  = 0;
+  phase2  = 0;
+  vol_t   = 0;
+  freq_t  = 0;
+  curnote = -1;
+
+@slider
+  vol_t    = slider1;
+  freq_t   = slider2;
+  freqdiff = slider3;
+  speed    = 1 / (slider4*slider4);
+
+@block
+  while
+  (
+    midirecv(offset,msg1,msg23) ? 
+    (
+      msg = msg1 & 240;
+      // note on
+      (msg == 9*16) ?
+      (
+        n = msg23 & 127;
+        f = 440 * pow(2,(n-69)/12);
+        v = ((msg23/256)|0) / 127;
+        freq_t = f;
+        vol_t  = v;
+        curnote = n;
+        //phase1 = 0;
+        //phase2 = 0;
+        slider1 = vol_t;
+        slider2 = freq_t;
+        sliderchange(slider1+slider2);
+      );
+      // note off
+      (msg == 8*16) ?
+      (
+        n = msg23 & 127;
+        n==curnote ? (
+          //f = 440 * pow(2,(n-69)/12);
+          //v = ((msg23/256)|0) / 127;
+          vol_t = 0;
+          curnote = -1;
+          slider1 = vol_t;
+          sliderchange(slider1);
+        );
+      );
+      midisend(offset,msg1,msg23);
+    );
+  );
+
+@sample
+
+  vol  += (vol_t  - vol ) * speed;
+  freq += (freq_t - freq) * speed;
+
+  spl0 = sin((2*$pi)*phase1) * vol;
+  spl1 = sin((2*$pi)*phase2) * vol;
+  phase1 += (freq/srate);
+  phase2 += ((freq+freqdiff)/srate);
+
+/*
+delta  0-4   deep sleep
+theta  4-8   light sleep, drowsiness
+alpha  8-12  relaxed, alert state of consciousness
+beta   12+   action, busy, anxious thinking, active concentration
+*/

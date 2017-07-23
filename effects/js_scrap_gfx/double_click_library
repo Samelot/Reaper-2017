@@ -1,0 +1,85 @@
+desc:mouse function library test
+
+in_pin:none
+out_pin:none
+
+slider1:50<0,100,1>test slider
+
+@init
+
+function m_use(cap)local(m_use_clkspeed)instance(dbl,count)
+(
+  m_use_clkspeed == 0  ? m_use_clkspeed=10;   //if speed is not set, set 10 as default
+  mouse_cap == cap ? (count += 1; 
+                      count == 1 ?    (dbl+=m_use_clkspeed;);                     
+                      dbl > (m_use_clkspeed+1) ? dbl = -1;
+                      );
+  mouse_cap != cap ? (count=0; dbl > 0 ? dbl-=1; dbl < 0 ? dbl+=.5;);
+);//use namespace.dbl == -1 ? for double click triggers.
+  //use namespace.count (whatever) for various uses. 
+  //so far, only tested in @block at 1024 buffersize
+  //it might be best to use in @gfx for static timing (speed may need to be adjusted)
+
+
+function set_m_use_clkspeed(speed)local(m_use_clkspeed)
+(
+  m_use_clkspeed=speed;
+);//default is 10 if not declared. 8-12 is the suggested range, ymmv.
+  //to override or rest default click speed for double click, 0=default(10)
+  //set_m_use_clkspeed(?);
+  //this may need to be called to tweak for each section of code
+
+function togglestate(button,cap)local(count,toggle)instance(state1,state2)
+(
+  button && mouse_cap == cap ? count+=1:count=0;
+  toggle == 0 ? toggle=-1; //inits toggle to -1
+  count == 1 ?  toggle=-toggle;
+  toggle == -1 ? (state1=1; state2=0;);
+  toggle ==  1 ? (state2=1; state1=0;);
+);//use namespace.button (via button_rect) to set which button to effect 
+  //namespace.state1 ? (condition);
+  //namespace.state2 ? (condition);
+
+
+function button_rect(x,y,w,h)
+(
+  mouse_x >= x && mouse_x <= x+w && mouse_y >= y && mouse_y <= y+h ? this.button = 1:this.button = 0;
+);//circle and other shapes in development
+
+  
+
+//test code
+text= "           Click on numbers
+    
+   LMB DoubleClick = reset to 50
+                LMB (hold) = decrease 
+SHIFT + LMB (hold) = decrease (fine)
+                RMB (hold) = increase
+SHIFT + RMB (hold) = increase (fine)                
+        CTRL + LMB = toggle color"
+@block
+numbers.button_rect(300,45,70,40);
+LMB.m_use(1);
+RMB.m_use(2);
+SHIFT_LMB.m_use(9);
+SHIFT_RMB.m_use(10);
+CTRL_LMB.m_use(5);
+numbers.button && LMB.dbl == -1 ? slider1=50;
+numbers.button && SHIFT_LMB.count > 10 ? slider1=max(slider1-=.1,0);
+numbers.button && SHIFT_RMB.count > 10 ? slider1=min(slider1+=.1,100);
+numbers.button && LMB.count > 10 ? slider1=max(slider1-=1,0);
+numbers.button && RMB.count > 10 ? slider1=min(slider1+=1,100);
+sliderchange(slider1);
+
+
+@gfx 400 100
+    gfx_r=1;gfx_g=0;gfx_b=0;
+    gfx_setfont(1, "Ariel", 15);
+    gfx_x=5; gfx_y=10;
+    color.togglestate(numbers.button,5);
+      color.state1 ? (gfx_r=1;gfx_g=0;);
+      color.state2 ? (gfx_r=0;gfx_g=1;);
+    gfx_drawstr(text);
+    gfx_setfont(1, "impact", 50);
+    gfx_x = 300; gfx_y = 45;
+    gfx_drawnumber(slider1,1);

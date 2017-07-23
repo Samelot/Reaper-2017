@@ -1,0 +1,165 @@
+desc:fx_cutter :: ccernn.2009 :: v0.0.3
+
+slider1: 8    < 1,   16, 1    > beats
+slider2: 2    < 1,   16, 1    > subdiv
+slider3: 4    < 1,   16, 1    > max cut
+slider4: 4    < 2,   16, 1    > max rep
+slider5: 0.35 < 0,   1,  0.01 > rep prob
+slider6: 0.15 < 0,   1,  0.01 > rep halve  prob
+slider7: 0.15 < 0,   1,  0.01 > rep double  prob
+slider8: 0.15 < 0,   1,  0.01 > rep slowdown  prob
+slider9: 0.15 < 0,   1,  0.01 > rep speedup  prob
+
+//slider7: 1    < 0.5, 2,  0.01 > rep speed mult
+
+//--------------------------------------------------
+@init
+
+  BUFFER  = $x10000;
+  speed = 1;
+
+//--------------------------------------------------
+@slider
+
+  beats   = slider1;
+  subdiv  = slider2;
+  maxcut  = slider3;
+  maxrep  = slider4;
+  repprob = slider5;
+  rephalveprob = slider6;
+  repdoubleprob = slider7;
+  repslowdownprob = slider8;
+  repspeedupprob = slider9;
+  //repspeed = slider7;
+
+//--------------------------------------------------
+@block
+
+  beatlen  = srate*(60/tempo);
+  buflen   = beatlen*beats;
+  slicelen = beatlen/subdiv; // buflen/subdiv;
+
+//--------------------------------------------------
+@sample
+
+  play_state&1 ? (
+    in0 = spl0;
+    in1 = spl1;
+    //----- new block?
+    cutlen-=1;
+    cutlen<=0 ? (
+      playpos = recpos;
+      speed = 1;
+      slicesleft<=0 ? slicesleft=beats*subdiv;
+      numcut = (1+rand(maxcut)) | 0;
+      numcut>=slicesleft ? numcut=slicesleft;
+      slicesleft-=numcut;
+      cutlen = numcut*slicelen;
+      rand(1)<repprob && havedata ? (
+        dorep = 1;
+        numrep = (2+rand(maxrep-1)) | 0;
+        replen = (cutlen/numrep)|0;
+      ) : (
+        dorep = 0;
+        replen = cutlen; // remove
+      );
+      reppos = playpos;
+      repcount = replen;
+    ); // cutlen<0
+    //----- rewind slice?
+    dorep ? (
+      repcount-=1;
+      repcount<=0 ? (
+        rand(1) < repdoubleprob ? replen*=2;
+        rand(1) < rephalveprob ? replen *= 0.5;
+        rand(1) < repslowdownprob ? speed *= 0.5;
+        rand(1) < repspeedupprob ? speed *= 2;
+        replen>cutlen ? replen=cutlen;
+        playpos  = reppos;
+        repcount = replen;
+      );
+    ); // dorep
+
+    //----- i/o
+    p2 = playpos*2;
+    out0 = BUFFER[p2];
+    out1 = BUFFER[p2+1];
+    //playpos+=1;
+    //playpos>=buflen ? playpos=0;
+    playpos+=speed;
+    playpos>=buflen ? playpos-=buflen;
+    p2 = recpos*2;
+    BUFFER[p2]   = in0;
+    BUFFER[p2+1] = in1;
+    recpos+=1;
+    recpos>=buflen ? (
+      recpos=0;
+      havedata = 1;
+    );
+    havedata ? (
+      spl0 = out0;
+      spl1 = out1;
+    );
+
+  ); // play_state&1
+
+//--------------------------------------------------
+@gfx
+
+    gfx_clear=0;
+    ilen = gfx_w/buflen;
+    //----- wave
+      gfx_r=.5; gfx_g=.5; gfx_b=.5; gfx_a=1; 
+      h2 = gfx_h * 0.5;
+      gfx_x = 0;
+      gfx_y = h2;
+      i = x = 0;
+      xadd = buflen / gfx_w;
+      loop( gfx_w,
+        n = ( BUFFER[(x*2)] + BUFFER[(x*2)+1] ) * 0.5;
+        y = h2 - (n*h2);
+        //gfx_x = i;
+        //gfx_y = h2;
+        gfx_lineto(i,y,0);
+        x += xadd;
+        i += 1;
+      );
+    //----- slice grid
+    gfx_r=1; gfx_g=1; gfx_b=1; gfx_a=0.8;
+    num = beats*subdiv;
+    adder = gfx_w/num;
+    x = adder;
+    loop( num-1,
+      gfx_x = x;
+      gfx_y = 0;
+      gfx_lineto(x,gfx_h,0);
+      x += adder;
+    );
+    //----- cut block
+    gfx_r=1; gfx_g=1; gfx_b=0; gfx_a=0.5;
+    x = reppos * ilen;
+    x2 = (reppos+(numcut*slicelen)) * ilen;
+    gfx_x = x;
+    gfx_y = 0;
+    gfx_rectto(x2,gfx_h);
+    //----- repeat block
+    dorep ? (
+      gfx_r=0; gfx_g=1; gfx_b=0; gfx_a=0.5;
+      x = reppos * ilen;
+      x2 = (reppos+replen) * ilen;
+      gfx_x = x;
+      gfx_y = 0;
+      gfx_rectto(x2,gfx_h);
+    );
+    //----- rec cursor
+    gfx_r=1; gfx_g=0; gfx_b=0; gfx_a=1;
+    x = recpos * ilen;
+    gfx_x = x;
+    gfx_y = 0;
+    gfx_lineto(x,gfx_h,0);
+    //----- play cursor
+    gfx_r=0; gfx_g=1; gfx_b=0; gfx_a=1;
+    x = playpos * ilen;
+    gfx_x = x;
+    gfx_y = 0;
+    gfx_lineto(x,gfx_h,0);

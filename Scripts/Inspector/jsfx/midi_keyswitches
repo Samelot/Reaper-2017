@@ -1,0 +1,114 @@
+desc:MIDI Keyswitches
+
+// version 1.0 - 07/11/2016
+// written by SFI
+// This jsfx is a part of Track Inspector plugin
+// http://sfer.online.free.fr
+
+// ==========================================================
+
+slider1: 0<0,127>-KS Channel 1
+slider2: 0<0,127>-KS Channel 2
+slider3: 0<0,127>-KS Channel 3
+slider4: 0<0,127>-KS Channel 4
+slider5: 0<0,127>-KS Channel 5
+slider6: 0<0,127>-KS Channel 6
+slider7: 0<0,127>-KS Channel 7
+slider8: 0<0,127>-KS Channel 8
+slider9: 0<0,127>-KS Channel 9
+slider10:0<0,127>-KS Channel 10
+slider11:0<0,127>-KS Channel 11
+slider12:0<0,127>-KS Channel 12
+slider13:0<0,127>-KS Channel 13
+slider14:0<0,127>-KS Channel 14
+slider15:0<0,127>-KS Channel 15
+slider16:0<0,127>-KS Channel 16
+
+slider17:0<0, 127>-Channel
+
+// ==========================================================
+
+@init
+
+NOTE_ON   = $x90;
+NOTE_OFF  = $x80;
+CC        = $xB0;
+PC        = $xC0;
+current_channel = 1;
+
+// ==========================================================
+
+@slider
+ 
+ks[1 ] = slider1;
+ks[2 ] = slider2;
+ks[3 ] = slider3;
+ks[4 ] = slider4;
+ks[5 ] = slider5;
+ks[6 ] = slider6; 
+ks[7 ] = slider7;
+ks[8 ] = slider8;
+ks[9 ] = slider9;
+ks[10] = slider10;
+ks[11] = slider11;
+ks[12] = slider12;
+ks[13] = slider13;
+ks[14] = slider14;
+ks[15] = slider15;
+ks[16] = slider16; 
+
+
+// ==========================================================
+
+@block
+
+while (
+  input = midirecv(mpos, msg1, msg23);
+  input  ? (
+         
+    midi_instruction = msg1  & $xF0;
+    midi_channel     = msg1  & $x0F;
+    midi_value       = msg23 & $x7F;
+    
+    CC_value = (msg23 / 256 ) | 0; 
+    CC_number = msg23 - ( CC_value * 256 );
+    is_cc_message = msg1 >= 176 && msg1 <= 191;
+    is_source_cc  = ((CC_number == 32) || (CC_number == 0));
+    
+    play_state == 1 ? (
+      changed = 1;
+    );   
+     
+    midi_instruction == PC ? (
+      current_channel = midi_channel; 
+      midisend(mpos, current_channel + NOTE_ON , midi_value, 127);
+      midisend(mpos, current_channel + NOTE_OFF, midi_value); 
+    ) : ( 
+      midi_instruction == NOTE_ON || midi_instruction == NOTE_OFF || is_source_cc == 0 && midi_instruction != PC ? (   
+        midi_instruction == NOTE_ON ? ( 
+          notes[midi_value] = current_channel; 
+          msg1 = midi_instruction + current_channel;
+          midisend(mpos+1, msg1, msg23);
+        ) : (
+          midi_instruction == NOTE_OFF ? (
+            midisend(mpos+1, midi_instruction + notes[midi_value], msg23);
+          ) : (
+            msg1 = midi_instruction + current_channel;
+            midisend(mpos+1, msg1, msg23);
+          );
+        );
+      );
+    );     
+  ) : (
+    (play_state == 0 && changed == 1) || (last_ch != slider17 || last_ks != ks[current_channel]) ? (
+      current_channel = slider17;
+      changed = 0;
+      midisend(mpos, current_channel + NOTE_ON , ks[current_channel+1], 127);
+      midisend(mpos, current_channel + NOTE_OFF, ks[current_channel+1]);
+      last_ch = slider17;
+      last_ks = ks[current_channel];
+    );    
+  );
+  input;
+);
+

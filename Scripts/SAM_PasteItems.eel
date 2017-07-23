@@ -1,0 +1,59 @@
+extension_api("BR_GetMouseCursorContext", #windowOut, #segmentOut, #detailsOut);
+trackUnderMouse = extension_api("BR_GetMouseCursorContext_Track");
+
+//ShowConsoleMsg(sprintf(#dest, "%d", GetCursorPosition()));
+
+trackSelArray = 3333;
+trackSelArrayLen = 0;
+selTracks = CountSelectedTracks(0);
+
+newTrackSelArray = 4444;
+newTrackSelArrayLen = 0;
+
+holdCursorPos = GetCursorPosition(0);
+
+i = 0;
+loop(selTracks, 
+  // ShowConsoleMsg("n");
+  track = GetSelectedTrack(0, i);
+  trackSelArray[i] = track;
+  trackSelArrayLen += 1;
+  i += 1;
+);
+
+//Main_OnCommand(40513, 0); // View: Move edit cursor to mouse cursor 
+//Main_OnCommand(NamedCommandLookup("_SWS_AWPASTE"), 0);
+
+
+(trackUnderMouse) ? (
+  // ### if mouse hovers over track, paste to that track
+  
+  Main_OnCommand(41110, 0); // Track: Select track under mouse
+  Main_OnCommand(40058, 0); // Item: Paste items/tracks
+  //Main_OnCommand(NamedCommandLookup("_SWS_AWPASTE"), 0);
+  Main_OnCommand(40297, 0); // Track: Unselect all tracks  
+  
+  SetEditCurPos(holdCursorPos, false, false);
+  
+  i = 0;
+  loop(trackSelArrayLen,
+    SetTrackSelected(trackSelArray[i], 1);
+    i += 1;
+  );
+  
+) : (
+  // ### if mouse does not hover over track, paste to last selected track
+  
+  Main_OnCommand(40297, 0); // Track: Unselect all tracks
+  SetTrackSelected(GetMasterTrack(0), 1);
+  Main_OnCommand(40058, 0); // Item: Paste items/tracks
+  //Main_OnCommand(NamedCommandLookup("_SWS_AWPASTE"), 0);
+  SetEditCurPos(holdCursorPos, false, false);
+  
+  i = 0;
+  loop(trackSelArrayLen,
+    SetTrackSelected(trackSelArray[i], 1);
+    i += 1;
+  );
+  
+);

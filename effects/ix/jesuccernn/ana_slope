@@ -1,0 +1,85 @@
+desc:ana_slope :: ccernn.2009 :: v0.0.2
+
+slider1:0<0,63,1>signal input
+slider2:-1<-1,63,1>sync output
+slider3:0<0,3,1{positive,negative,zero,cycle}>mode
+slider4:0.5<0,1,0.001>threshold
+slider5:0.5<0,1>decay
+
+@init
+
+  prev   = 0;
+  cycle  = 0;
+  length = 0;
+
+  ph         = 0;
+  freq       = 220;
+  freq_n     = 0;
+  freq_speed = 1/128;
+
+@slider
+
+  anain  = slider1;
+  sync   = slider2;
+  mode   = slider3;
+  thresh = slider4;
+  decay  = slider5;
+
+@sample
+
+  s = 0;
+  input = spl(anain);
+  slope = (input - prev);
+
+  mode==0 ? (
+    slope>thresh ? s = 0.95;
+  ) :
+
+  mode==1 ? (
+    slope<thresh ? s = 0.95;
+  ) :
+
+  mode==2 ? (
+    abs(slope)<thresh ? s = 0.95;
+  ) :
+
+  mode==3 ? (
+
+    cycle > 0 ? length+=1;
+
+    ((cycle==0) && (slope>0)) ? (
+      cycle = 1;
+      length = 0;
+      minimum = input;
+    );
+
+    ((cycle==1) && (slope<0)) ? (
+      cycle = 2;
+      maximum = input;
+    );
+
+    ((cycle==2) && (slope>0)) ? (
+      freq = srate/length;
+      dc = minimum + ((maximum-minimum)*0.5);
+      s = 0.95;
+      length = 0;
+      cycle = 1;
+    );
+
+  );
+  
+//    freq > 1000 ? (
+//      while(
+//        freq *= 0.5;
+//        freq>1000;
+//      );
+//    );
+//    freq_n += (freq-freq_n) * freq_speed;
+//    ph += (freq_n/srate);
+//    ph >= 1 ? ph -= 1;
+//    spl1 = dc + sin(ph*$pi*2);
+//  );
+
+  prev = input;
+  sync>=0 ? spl(sync) = s;
+

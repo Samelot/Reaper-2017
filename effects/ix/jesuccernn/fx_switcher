@@ -1,0 +1,54 @@
+desc:fx_switcher :: ccernn.2009 :: v0.0.1
+
+slider1: 48 <-1,127,1> midi note
+slider2: -1 <-1,63,1> sync input
+slider3: 0 <0,63,1> input #1
+slider4: 2 <0,63,1> input #2
+
+@init
+  EVENTS = 0;
+  //memset(EVENTS,-1,4096);  // should be samplesblock
+  toggle = 0;
+
+@slider
+  midinote  = slider1;
+  sync   = slider2;
+  input1 = slider3;
+  input2 = slider4;
+
+@block
+  while(
+    midirecv(ofs,msg1,msg23) ? (
+      msg = msg1 & 240;
+      msg == (9*16) ? ( // note on
+        n = msg23 & 127;
+        n==midinote ? (
+          //val = (msg23/256) & 127; // |0;
+          EVENTS[ofs] = 1;//val*inv127;
+        );
+      );
+      //msg == (8*16) ? ( // note off
+      //  n = msg23 & 127;
+      //  n==mnote ? (
+      //    //val = (msg23/256) & 127; // |0;
+      //    EVENTS[ofs] = 0;//val*inv127;
+      //  );
+      //);
+      // todo: midi cc?
+      midisend(ofs,msg1,msg23);
+    );
+  );
+  offset = 0;  
+
+@sample
+
+  EVENTS[offset] > 0 ? toggle = 1-toggle;
+  EVENTS[offset] = 0;
+  offset += 1;
+
+  sync>=0 ? spl(sync)>0.5 ? toggle = 1-toggle;
+
+  toggle==0 ? in=input1 : in=input2;
+  spl0 = spl(in);
+  spl1 = spl(in+1);
+

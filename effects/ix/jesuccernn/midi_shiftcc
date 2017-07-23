@@ -1,0 +1,50 @@
+desc:midi_shiftcc :: ccernn.2009 :: v0.0.1
+
+slider1: 29 <-1,  127,1 > shift cc
+slider2: -1 <-1,  127,1 > shift note
+slider3: 0  <-127,127,1 > cc add
+
+@init
+
+  is_shifting=0;
+  div16 = 1/16;
+  div256 = 1/256;
+
+@slider
+
+  ccshift   = slider1;
+  noteshift = slider2;
+  ccadd     = slider3;
+
+@block
+
+  while(
+    midirecv(ofs,msg1,msg23) ? (
+      //chn = msg & 15;
+      msg = (msg1 & $xf0) * div16;
+      num = msg23 & $x7f;
+      //val = (msg23*div256) & $x7f;
+
+      // note on/off
+
+      msg == 9 ? num==noteshift ? is_shifting=1;
+      msg == 8 ? num==noteshift ? is_shifting=0;
+
+      // cc
+
+      msg == 11 ? (
+        num==ccshift ? (
+          val = (msg23*div256) & $x7f;
+          val>63 ? is_shifting=1 : is_shifting=0;
+        ) : (
+          is_shifting ? (
+            num += ccadd;
+            num = min(127,max(0,num));
+            msg23 = (msg23&=$xff80) + num;
+          );
+        );
+      );
+
+      midisend(ofs,msg1,msg23);
+    );
+  );

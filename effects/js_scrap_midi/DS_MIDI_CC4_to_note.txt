@@ -1,0 +1,41 @@
+desc:MIDI CC to PC
+
+in_pin:none
+out_pin:none
+
+slider1:0<0,127,1>CC4 value
+
+// ==========================================================
+@init
+    NOTE_ON = 9;
+    NOTE_OFF = 8;
+    CC = 11;
+
+// ==========================================================
+@sample
+
+while (
+    midirecv(mpos, msg1, msg23) ? (
+// ========================================= For EVERY MIDI msg received
+        msg = (msg1 / 16) | 0;
+        channel = 1 + msg1 - (msg * 16);     
+        msg_num = msg23 & 127;
+        msg_val = (msg23 / 256) | 0;
+        
+        in_CC4 = (msg == CC && msg_num == 4);
+        in_note104 = ((msg == NOTE_ON || msg == NOTE_OFF) && msg_num == 104);
+
+        in_CC4 ? (
+            out_note = msg_val;
+            slider1=out_note;
+            sliderchange(2^1);
+        ) : (
+        in_note104 ? (
+            msg23 = out_note + (msg_val * 256); 
+            midisend(mpos, msg1, msg23);
+        ) : (
+            midisend(mpos, msg1, msg23);
+        );
+      );
+    );   // end of the midi receive
+);

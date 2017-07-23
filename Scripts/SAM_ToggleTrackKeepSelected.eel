@@ -1,0 +1,33 @@
+extension_api("BR_GetMouseCursorContext", #windowOut, #segmentOut, #detailsOut);
+trackUnderMouse = extension_api("BR_GetMouseCursorContext_Track");
+
+//ShowConsoleMsg(sprintf(#dest, "%d", GetCursorPosition()));
+
+trackSelArray = 3333;
+trackSelArrayLen = 0;
+selTracks = CountSelectedTracks(0);
+
+
+i = 0;
+loop(selTracks, 
+  // ShowConsoleMsg("n");
+  track = GetSelectedTrack(0, i);
+  trackSelArray[i] = track;
+  trackSelArrayLen += 1;
+  i += 1;
+);
+
+Main_OnCommand(40297, 0);
+
+i = 0;
+loop(trackSelArrayLen,
+  SetTrackSelected(trackSelArray[i], 1);
+  i += 1;
+);
+
+(IsTrackSelected(trackUnderMouse) == 0) ? (
+  SetTrackSelected(trackUnderMouse, 1);
+) : (
+  SetTrackSelected(trackUnderMouse, 0);
+);
+

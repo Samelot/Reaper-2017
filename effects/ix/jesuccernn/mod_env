@@ -1,0 +1,28 @@
+desc:mod_env :: ccernn.2009 :: v0.0.0
+
+slider1: 0   < 0,63,1      > gate input
+slider2: 1   < 0,63,1      > output
+slider3: 10  < 1,256,0.001 > attack
+slider4: 100 < 1,256,0.001 > decay
+
+@init
+  target = 0;
+  value = 0;
+  playing = 0;
+
+@slider
+  gate   = slider1;
+  output = slider2;
+  attack = 1/(slider3*slider3);
+  decay  = 1/(slider4*slider4);
+
+@block
+blah+=samplesblock;
+
+@sample
+  ((playing==0) && (spl(gate)>0)) ? ( target=1; playing=1; );
+  ((playing==1) && (spl(gate)==0)) ? ( target=0; playing=0; );
+  playing ? value += (1-value)*attack
+          : value += (0-value)*decay;
+  spl(output) = value;
+

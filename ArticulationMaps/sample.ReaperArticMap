@@ -1,0 +1,55 @@
+# REAPER articulation map examples
+#
+# Entries either begin with "note" for per-note notation that will trigger an event
+# on the same channel as the note, or "track" for track notation that will trigger an event 
+# on any channel.
+#
+# note entry format:
+# note notation_type notation_value : trigger_type trigger_parameter trigger_value
+#
+# track entry format:
+# track notation_type notation_value : trigger_type trigger_channel trigger_parameter trigger_value
+#
+# note notation_type can be: 
+# articulation ornament text notehead slur technique
+#
+# track notation_type can be:
+# dynamic text
+#
+# trigger_type can be: 
+# keyswitch cc expression
+# For VST3, trigger_parameter can be a named keyswitch or named note expression.
+#
+# Lines in this file that start with # will be ignored. 
+#
+# Examples:
+#
+# accent articulation triggers a keyswitch on the same channel as the note, pitch 2, velocity 127:
+# note articulation accent : keyswitch 2 127
+#
+# square notehead triggers a keyswitch on the same channel as the note, pitch 7, velocity 64:
+# note notehead square : keyswitch 7 64
+#
+# tremolo ornament triggers CC92 on the same channel as the note, velocity 127:
+# note ornament tremolo : cc 92 127
+#
+# "legato" text ornament triggers three consecutive VST3 legato expressions 
+# on the same channel as the note, with values 64, 96, and 127:
+# note text legato : expression legato 64
+# note text legato : expression legato 96
+# note text legato : expression legato 127
+#
+# slur triggers a VST3 legato keyswitch on the same channel as the note, velocity 127:
+# note slur begin : keyswitch legato 127 
+#
+# fff dynamic triggers a keyswitch on channel 1, pitch 12, value 127:
+# track dynamic fff : keyswitch 1 12 127
+#
+# mf dynamic triggers CC7, channel 0, value 64:
+# track dynamic mf : cc 0 7 64
+#
+# "pizz" notation on a track triggers a keyswitch on channel 2, pitch 0, velocity 127:
+# track text pizz : keyswitch 2 0 127
+
+
+

@@ -1,0 +1,37 @@
+desc: Damper kick pedal (CC64-to-Note mapper)
+
+//converts CC64 message to note-on message on every second message
+//to avoid triggering when you lift the pedal
+
+slider1:0<0,127,1>Output MIDI note
+slider2:0<0,127,1>Output velocity
+
+@init
+CC_MSG = 11;
+pedalup = 0;
+
+@slider
+ccsrc = 64; //change this number to use different CC as source
+note = slider1;
+vel = slider2;
+
+@block
+while (
+  midirecv(mpos, msg1, msg23) ? (
+    pedalup = msg23;
+    statusHi = (msg1/16)|0;
+    msg3 = (msg23/256)|0;
+    msg2 = msg23-(msg3*256);
+    (statusHi == CC_MSG && msg2 == ccsrc) ? (
+      pedalup < 16448 ? (
+        msg3 = 0;
+      ):(
+        msg3=vel;
+      );
+      msg1 = 9*16;
+      msg2 = note;
+      msg23 = (msg3*256+msg2)|0;
+    );
+    midisend(mpos,msg1, msg23);
+  );
+);

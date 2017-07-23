@@ -1,0 +1,50 @@
+desc:ana_impulse :: ccernn.2009 :: v0.0.3
+
+slider1:0<0,63,1>signal input
+slider2:-1<-1,63,1>sync output
+slider3:0<1,0,1{thresh,diff}>trigger
+slider4:0<0,1,1{impulse,state}>mode
+slider5:0<0,1,0.01>value
+slider6:0<0,1000,1>hold (samples) (not used)
+
+@init
+
+  state = 0;
+  z0    = 0.01; // avoid initial triggering
+
+@slider
+
+  input  = slider1;
+  output = slider2;
+  trig   = slider3;
+  mode   = slider4;
+  value  = slider5;
+  hold   = slider6;
+
+@sample
+
+  in = spl(input);
+  out = 0;
+
+  trig==0 ? ( // thresh
+    abs(in) >= value ? (
+      state==0 ? (
+        out = state = 0.95;
+      );
+    ) : state = 0;
+  ) :
+
+  trig==1 ? ( // diff
+    diff = abs(in-z0);
+    diff >= value ? (
+      state==0 ? (
+        out = state = 0.95;
+      );
+    ) : state = 0;
+    z0 = in;
+  );
+
+  output>=0 ? (
+    mode==0 ? spl(output) = out :
+    mode==1 ? spl(output) = state;
+  );

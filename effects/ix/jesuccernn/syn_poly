@@ -1,0 +1,317 @@
+desc:syn_poly :: ccernn.2009 :: v0.0.1
+// polyphonic synthesizer
+
+slider1:0.5<0,1,0.01>master volume
+slider2:1<0,1000>env attack
+slider3:500<0,1000>env release
+slider4:2<0,3,1{null,noise,sine,saw,square,audio}>osc1
+slider5:2<0,3,1{null,noise,sine,saw,square,audio}>osc2
+slider6:0.5<0,1,0.01>osc balance
+slider7:0<0,4,1{add,am,fm,pd}>synthesis
+//--------------------------------------------------
+/*
+TODO
+- multiple voices can play the same note
+  or NNA's of some sort
+  to remove clicks when a new note 'takes over' that voice
+*/
+//--------------------------------------------------
+@init
+  BLOCK_NUMBER    = 0;
+  SAMPLE_NUMBER   = 0;
+  MAX_VOICES      = 8;
+  SYNTH           = 1000;
+    S_master      = 0;
+    S_attack      = 1;
+    S_release     = 2;
+    S_osc1_type   = 3;
+    S_osc2_type   = 4;
+    S_osc_bal     = 5;
+    S_synthesis   = 6;
+  NOTEMAP         = 2000;
+  VOICE_LIST      = 3000;
+    V_active      = 0;  // 'power'
+    V_note        = 1;
+    V_volume      = 2;  // voice volume
+    V_osc1_type   = 3;  // sin, saw
+    V_osc1_freq   = 4;  // hz, cycles per second
+    V_osc1_phase  = 5;  // 0..1, current t, (or t-1)
+    V_osc2_type   = 6;
+    V_osc2_freq   = 7;
+    V_osc2_phase  = 8;  // 0..1, current t, (or t-1)
+    V_osc_bal     = 9;  // osc balance
+    V_synthesis   = 10;
+    V_env_stage   = 11;  // adsr
+    V_env_val     = 12; // current value
+    V_env_len     = 13;  // in samples (decreased per sample)
+    V_env_add     = 14; // added to _val per sample
+  VOICE_SIZE      = 15;
+  LAST_VOICE      = VOICE_LIST + (VOICE_SIZE*MAX_VOICES);
+  ENV_OFF         = 0;
+  ENV_ATTACK      = 1;
+  ENV_DECAY       = 2;
+  ENV_SUSTAIN     = 3;
+  ENV_RELEASE     = 4;
+  ENV_FINISHED    = 5;
+  OSC_NULL        = 0;
+  OSC_NOISE       = 1;
+  OSC_SINE        = 2;
+  OSC_SAW         = 3;
+  OSC_SQUARE      = 4;
+  OSC_AUDIO       = 5;
+  SYN_ADD         = 0;
+  SYN_AM          = 1;
+  SYN_FM          = 2;
+  SYN_PD          = 3;
+  //----------
+  SYNTH[S_master]    = 0.5;
+  SYNTH[S_attack]    = 1;
+  SYNTH[S_release]   = 500;
+  SYNTH[S_osc1_type] = OSC_SINE;
+  SYNTH[S_osc2_type] = OSC_NULL;
+  SYNTH[S_osc_bal]   = 0.5;
+  SYNTH[S_synthesis] = SYN_ADD;
+  i = 0;
+  while
+  (
+    NOTEMAP[i] = -1;
+    i += 1;
+    i < 128;
+  );
+  voice = VOICE_LIST;
+  while
+  (
+    voice[V_active] = 0;
+    voice += VOICE_SIZE;
+    voice < LAST_VOICE;
+  );
+//--------------------------------------------------
+@slider
+  SYNTH[S_master] = slider1 * 0.5;
+  SYNTH[S_attack] = slider2;
+  SYNTH[S_release] = slider3;
+  SYNTH[S_osc1_type] = slider4;
+  SYNTH[S_osc2_type] = slider5;
+  SYNTH[S_osc_bal] = slider6;
+  SYNTH[S_synthesis] = slider7;
+  SYNTH[S_attack] == 0 ? SYNTH[S_attack] = 0.01;
+  SYNTH[S_release] == 0 ? SYNTH[S_release] = 0.01;
+//--------------------------------------------------
+@block
+  BLOCK_NUMBER  += 1;
+  SAMPLE_NUMBER =  0;
+  // remove all finished voices
+  voice = VOICE_LIST;
+  while
+  (
+    voice[V_env_stage] == ENV_FINISHED ?
+    (
+      NOTEMAP[ voice[V_note] ] = -1;
+      voice[V_active] = 0;
+      voice[V_env_stage] = ENV_NULL;
+      voice[V_env_val] = 0;
+    );
+    voice += VOICE_SIZE;
+    voice < LAST_VOICE;
+  );
+  while
+  (
+    midirecv(offset,msg1,msg23) ? 
+    (
+      msg = msg1 & 240;
+      //---------- note on
+      (msg == 9*16) ?
+      (
+        note = msg23 & 127;
+        voice = NOTEMAP[note];
+        voice == -1 ?
+        (
+          v = VOICE_LIST;
+          while
+          (
+            v[V_active] == 0 ? voice = v;
+            v += VOICE_SIZE;
+            (voice < 0) && (v < LAST_VOICE);
+          );
+        );
+        voice >= 0 ?
+        (
+          NOTEMAP[note]       = voice;
+          voice[V_active]     = 1;
+          voice[V_note]       = note;
+          voice[V_volume]     = ((msg23/256)|0) / 127;
+          voice[V_osc1_type]  = SYNTH[S_osc1_type];
+          voice[V_osc1_freq]  = 440 * pow(2.0,(note-69.0)/12.0);
+          voice[V_osc1_phase] = 0;
+          voice[V_osc2_type]  = SYNTH[S_osc2_type];
+          voice[V_osc2_freq]  = 440 * pow(2.0,(note-69.0)/12.0);
+          voice[V_osc2_phase] = 0;
+          voice[V_osc_bal]    = SYNTH[S_osc_bal];
+          voice[V_synthesis]  = SYNTH[S_synthesis];
+          voice[V_env_stage]  = ENV_ATTACK;
+          //voice[V_env_val]  = 0;
+          voice[V_env_len]    = srate * SYNTH[S_attack] / 1000;   // = samples
+          voice[V_env_add]    = (1-voice[V_env_val]) / voice[V_env_len]; // n..1
+        );
+      );
+      //---------- note off
+      (msg == 8*16) ?
+      (
+        note = msg23 & 127;
+        voice = NOTEMAP[note];
+        voice != -1 ?
+        (
+          //voice[V_active] = 0;
+          voice[V_env_stage] = ENV_RELEASE;
+          voice[V_env_len]   = srate * SYNTH[S_release] / 1000;
+          voice[V_env_add]   = (0-voice[V_env_val]) / voice[V_env_len];  // n..0
+        );
+      );
+      midisend(offset,msg1,msg23);
+    );
+  );
+//--------------------------------------------------
+// samples_per_cycle = srate / freq
+// increment_per_sample = $pi*2 / samples_per_cycle
+// = pi2*freq / srate
+@sample
+  DEBUG_num_processed_voices = 0;
+  in0 = spl0;
+  in1 = spl1;
+  // todo: offset
+  s0 = 0;
+  s1 = 0;
+  voice = VOICE_LIST;
+  while
+  (
+    voice[V_active] == 1 ?
+    (
+      DEBUG_num_processed_voices += 1;
+      //---------- env
+      voice[V_env_val] += voice[V_env_add];
+      env = voice[V_env_val];
+      voice[V_env_stage] == ENV_ATTACK ?
+      (
+        voice[V_env_len] -= 1;
+        voice[V_env_len] <= 0 ?
+        (
+          voice[V_env_stage] = ENV_SUSTAIN;
+          voice[V_env_add] = 0;
+        )
+      ) :
+      //voice[V_env_stage] == ENV_SUSTAIN ?
+      //(
+      //) :
+      voice[V_env_stage] == ENV_RELEASE ?
+      (
+        voice[V_env_len] -= 1;
+        voice[V_env_len] <= 0 ?
+        (
+          voice[V_env_stage] = ENV_FINISHED;
+        );
+//      ) : 
+//      voice[V_env_stage] == ENV_FINISHED ?
+//      (
+      );
+      //---------- osc1
+      voice[V_osc1_phase] += (1 / (srate / voice[V_osc1_freq]));
+      voice[V_osc1_phase] >= 1 ?  voice[V_osc1_phase] -= 1;
+      
+      voice[V_osc1_type] == OSC_NOISE ?
+      (
+        o1v0 = rand(2)-1; // 0;
+        o1v1 = rand(2)-1; // 0;
+      ) : 
+      voice[V_osc1_type] == OSC_SINE ?
+      (
+        o1v0 = sin( voice[V_osc1_phase] * $pi * 2);
+        o1v1 = sin( voice[V_osc1_phase] * $pi * 2);
+      ) :
+      voice[V_osc1_type] == OSC_SAW ?
+      (
+        o1v0 = (voice[V_osc1_phase] * 2) - 1;
+        o1v1 = (voice[V_osc1_phase] * 2) - 1;
+      ) :
+      voice[V_osc1_type] == OSC_SQUARE ?
+      (
+        voice[V_osc1_phase] < 0.5 ?
+        (
+          o1v0 = -1;
+          o1v1 = -1;
+        ) :
+        (
+          o1v0 = 1;
+          o1v1 = 1;
+        );
+      ) :
+      voice[V_osc1_type] == OSC_AUDIO ?
+      (
+        o1v0 = in0;
+        o1v1 = in1;
+      ) ;
+      //---------- osc2
+      // TODO: FM -> osc2_freq
+      voice[V_osc2_phase] += (1 / (srate / voice[V_osc2_freq]));
+      voice[V_osc2_phase] >= 1 ?  voice[V_osc2_phase] -= 1;
+      
+      voice[V_osc2_type] == OSC_NOISE ?
+      (
+        o2v0 = rand(2)-1; // 0;
+        o2v1 = rand(2)-1; // 0;
+      ) : 
+      voice[V_osc2_type] == OSC_SINE ?
+      (
+        o2v0 = sin( voice[V_osc2_phase] * $pi * 2);
+        o2v1 = sin( voice[V_osc2_phase] * $pi * 2);
+      ) :
+      voice[V_osc2_type] == OSC_SAW ?
+      (
+        o2v0 = (voice[V_osc2_phase] * 2) - 1;
+        o2v1 = (voice[V_osc2_phase] * 2) - 1;
+      ) :
+      voice[V_osc2_type] == OSC_SQUARE ?
+      (
+        voice[V_osc2_phase] < 0.5 ?
+        (
+          o2v0 = -1;
+          o2v1 = -1;
+        ) :
+        (
+          o2v0 = 1;
+          o2v1 = 1;
+        );
+      ) :
+      voice[V_osc2_type] == OSC_AUDIO ?
+      (
+        o2v0 = in0;
+        o2v1 = in1;
+      ) ;
+      //----------
+      // lfo
+      // flt
+      // fx
+      //----------
+      SYNTH[S_synthesis] == SYN_ADD ?
+      (      
+        out0 = (o1v0 * (1-SYNTH[s_osc_bal]) )
+             + (o2v0 *    SYNTH[s_osc_bal] );
+        out1 = (o1v1 * (1-SYNTH[s_osc_bal]) )
+             + (o2v1 *    SYNTH[s_osc_bal] );
+      ) : 
+      SYNTH[S_synthesis] == SYN_AM ?
+      (      
+        out0 = (o1v0 * (1-SYNTH[s_osc_bal]) )
+             * (o2v0 * SYNTH[s_osc_bal] );
+        out1 = (o1v1 * (1-SYNTH[s_osc_bal]) )
+             * (o2v1 * SYNTH[s_osc_bal] );
+      );
+      s0 += out0 * env;
+      s1 += out1 * env;
+    );
+    voice += VOICE_SIZE;
+    (voice < LAST_VOICE);
+  );
+  spl0 = s0 * SYNTH[S_master];
+  spl1 = s1 * SYNTH[S_master];
+  SAMPLE_NUMBER += 1;
+//--------------------------------------------------

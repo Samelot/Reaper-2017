@@ -1,0 +1,79 @@
+desc:midi_random :: ccernn.2009 :: v0.0.1
+
+slider1: 250 <0,1000,1> speed (ms)
+//slider1: 4 <0.25, 16, .25 > beats
+slider2: 12 <1,127,1> num notes
+slider3: 60 <1,127,1> note start
+
+@init
+
+  EVENTS    = 1000;
+  MAXEVENTS = 1024;
+  numevents = 0;
+  prevstate = 0;
+  isplaying = 0;
+  countdown = 0;
+
+  do_note = 1;
+  do_cc = 0;
+
+@slider
+  speed = (slider1/1000) * srate;
+  //beats = slider1;
+  numnotes = slider2;
+  notestart = slider3;
+
+@block
+
+  //speed = beats * srate / (tempo/60);
+  ////ms =  beats * (60/tempo) * 1000;
+  //speed<64 ? speed=64;
+
+/*
+  play_state != prevstate ? (
+    play_state & 1 ? (
+      isplaying = 1;
+      countdown = 0; // speed;
+      //numevents = 0;
+      //cycle = 0;//cyclecount;
+    ) : (
+      isplaying=0;
+    );
+    prevstate = play_state;
+  );
+*/
+
+//  isplaying ? (
+    offset = 0;
+    block = samplesblock;
+    while(
+      countdown >= block ? (
+        countdown-=block;
+        block=0;
+      ) : ( // count<block
+        offset += countdown;
+        block -= countdown;
+
+        //      msg = msg1 & 240;
+        //      (msg == 9*16) ? (
+        //        note = msg23 & 127;
+        //        ((mnote<0) || (mnote==note)) ? (
+        //          m_vel = ((msg23/256)|0) * i127; // / 127;
+        //          //m_freq   = 440 * pow(2.0,(note-69.0)/12.0);
+
+        note = rand(128); // 0..127
+        note %= numnotes;
+        note += notestart;
+        vel = 127;
+
+        msg1 = (9*16) + 0;
+        msg23 = ((vel*256)|0) + (note&127);
+        midisend(offset,msg1,msg23);
+
+        //numevents = 0;
+        countdown = speed;
+      ); // count<block
+      block>0;
+    ); // while
+//  ); // isplaying
+

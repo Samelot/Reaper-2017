@@ -1,0 +1,38 @@
+desc:fx_track :: ccernn.2009 :: v0.0.0
+
+slider1: 1   < 0,4         > boost
+slider2: 1   < 1,100,0.01  > lowpass
+slider3: 100 < 1,100,0.01  > highpass
+
+@slider
+
+  _bo = slider1;
+  _lp = slider2;
+  _hp = slider3;
+
+  //_lp > 0 ? (lp=1/_lp) : (lp=1);
+  lp = 1/_lp;
+  hp = 1/_hp;
+
+@init
+
+  lp0_n = lp1_n = 0;
+  hp0_n = hp1_n = 0;
+  
+@sample
+
+  in0 = spl0 * _bo;
+  in1 = spl1 * _bo;
+
+  hp0_n += ((in0-hp0_n) * hp);
+  hp1_n += ((in1-hp1_n) * hp);
+
+  in0 -= hp0_n;
+  in1 -= hp1_n;
+
+  lp0_n += ((in0-lp0_n) * lp);
+  lp1_n += ((in1-lp1_n) * lp);
+
+  spl0 = lp0_n;
+  spl1 = lp1_n;
+

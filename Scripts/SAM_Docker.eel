@@ -1,0 +1,149 @@
+cmdID_toggleMixerVis = 40078;
+cmdID_toggleMixerDocking = 40083;
+cmdID_toggleDockerVis = 41084;
+cmdID_focusArrange = "_BR_FOCUS_ARRANGE_WND";
+cmdID_viewFXChain = 40291;
+
+screensetLoadWindowSet1 = 40454;
+screensetLoadWindowSet3 = 40456;
+
+GetExtState(#cycleState, "SAM_Mixer", "cyclestate");
+
+isMixerVis = GetToggleCommandState(cmdID_toggleMixerVis);
+isMixerDocking = GetToggleCommandState(cmdID_toggleMixerDocking);
+
+savedMixerState = 0;
+savedDockerState = 0;
+
+
+(isMixerVis == 1) ? (
+    //Main_OnCommand(cmdID_toggleMixerVis, 0);
+    savedMixerState = 1;
+) : (
+    savedMixerState = 0;
+);
+
+isDockerVis = GetToggleCommandState(cmdID_toggleDockerVis);
+
+(isDockerVis == 1) ? (
+    savedDockerState = 1;
+    //ShowConsoleMsg("Only dock is visible\n");
+) : (
+    savedDockerState = 0;
+);
+
+strcat(#newStr, "savedMixerState: ");
+strcat(#newStr, sprintf(#dest, "%d", savedMixerState));
+
+strcat(#newStr, ", savedDockerState: ");
+strcat(#newStr, sprintf(#dest, "%d", savedDockerState));
+
+//ShowConsoleMsg(#newStr);
+
+function recallDockerMixerState() 
+(
+    (savedDockerState == 0) ? (
+        Main_OnCommand(cmdID_toggleMixerVis, 0);
+    );
+);
+
+(isDockerVis == 0) ? (
+    Main_OnCommand(screensetLoadWindowSet1, 0);    
+    Main_OnCommand(cmdID_viewFXChain, 0);       
+    
+    (savedMixerState == 0) ? (
+        Main_OnCommand(cmdID_toggleMixerVis, 0);
+    );
+    
+    Main_OnCommand(cmdID_focusArrange, 0);
+
+    //recallDockerMixerState();
+) : (     
+    Main_OnCommand(cmdID_toggleDockerVis, 0);
+);
+/*
+(isMixerVis == 1) ? (
+    // WTF, I don't understand this...
+    Main_OnCommand(cmdID_toggleMixerVis, 0);
+    savedMixerState = 1;
+) : (
+    savedMixerState = 0;
+);
+
+Main_OnCommand(NamedCommandLookup("_SWS_SHOWDOCK"), 0);
+
+savedDockerState = GetToggleCommandState(cmdID_toggleDockerVis);
+    strcat(#newStr, "savedMixerState: ");
+    strcat(#newStr, sprintf(#dest, "%d", savedMixerState));
+
+    strcat(#newStr, ", savedDockerState: ");
+    strcat(#newStr, sprintf(#dest, "%d", savedDockerState));
+    strcat(#newStr, "\n");
+ShowConsoleMsg(#newStr);
+Main_OnCommand(screensetLoadWindowSet1, 0);
+*/
+
+function weirdDock()
+(
+    DockWindowRefresh();
+    Main_OnCommand(NamedCommandLookup("_SWS_SHOWDOCK"), 0);
+
+    isMixerVis = GetToggleCommandState(cmdID_toggleMixerVis);
+    isMixerDocking = GetToggleCommandState(cmdID_toggleMixerDocking);
+
+    (isMixerVis == 1) ? (
+        // WTF, I don't understand this...
+        //Main_OnCommand(cmdID_toggleMixerVis, 0);
+        savedMixerState = 1;
+    ) : (
+        savedMixerState = 0;
+    );
+
+    //isDockerVis = GetToggleCommandState(cmdID_toggleDockerVis);
+
+    (isDockerVis == 1) ? (
+        savedDockerState = 1;
+    ) : (
+        savedDockerState = 0;
+    );
+
+    strcat(#newStr, "savedMixerState: ");
+    strcat(#newStr, sprintf(#dest, "%d", savedMixerState));
+
+    strcat(#newStr, ", savedDockerState: ");
+    strcat(#newStr, sprintf(#dest, "%d", savedDockerState));
+    strcat(#newStr, "\n");
+    //ShowConsoleMsg(#newStr);
+);
+
+/*
+// 3 Step Action !!!
+HasExtState("SAM_Docker", "cyclestate") ? (
+    match("0", #cycleState) ? (
+        //ShowConsoleMsg("0");
+        (isDockerVis == 0) ? (
+            Main_OnCommand(screensetLoadWindowSet1, 0);
+         );        
+        
+        SetExtState("SAM_Docker", "cyclestate", "1", 0);
+    ) : match("1", #cycleState) ? (
+        (isMixerVis == 1 && isMixerDocking == 1) ? (
+            Main_OnCommand(screensetLoadWindowSet2, 0);
+        );
+        
+        SetExtState("SAM_Docker", "cyclestate", "2", 0);
+    ) : match("2", #cycleState) ? (
+        (isDockerVis == 1) ? (
+            Main_OnCommand(cmdID_toggleDockerVis, 0);
+        );
+        
+        SetExtState("SAM_Docker", "cyclestate", "0", 0);
+    );
+) : (
+    SetExtState("SAM_Docker", "cyclestate", "0", 0);
+);
+*/
+
+//ShowConsoleMsg(Dock_UpdateDockID("ident_str", 1));
+//ShowConsoleMsg(#cycleState);
+//ShowConsoleMsg(sprintf(#dest, "%d", isMixerVis));

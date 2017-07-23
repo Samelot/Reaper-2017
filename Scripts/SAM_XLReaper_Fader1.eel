@@ -1,0 +1,13 @@
+yo[] = get_action_context(#filename,sectionID,cmdID,mode,resolution,val);
+GetExtState(#trackNum, "SAM_XLReaper", "Fader1");
+
+//newParamValue = val / 16383;
+newParamValue = val / 127;
+
+strcat(#oscMessage, "/track/");
+strcat(#oscMessage, #trackNum);
+strcat(#oscMessage, "/volume");
+
+//ShowConsoleMsg(sprintf(#dest, "%d", resolution));
+// "/track/3/volume"
+OscLocalMessageToHost(#oscMessage, newParamValue);

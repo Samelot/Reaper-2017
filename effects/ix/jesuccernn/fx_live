@@ -1,0 +1,152 @@
+desc:fx_live :: ccernn.2009 :: v0.0.2
+
+slider1: 4 < 1,15,1 > numcol
+slider2: 8 < 1,15,1 > numrow
+slider3: 4 < 1,16,0.25 > sync
+
+slider8: 8000000 < 0,8000000,1 > free mem (read-only)
+
+slider10: 0 < 0,15, 1 > curcol
+slider11: 0 < 0,15, 1 > currow
+slider12: 0 < 0,255,1 > curclip
+
+//--------------------------------------------------
+@init
+  CLIPS     = $x00000;
+  BUFFER    = $x10000;
+  freemem   = 8000000;
+  curcol    = 0;
+  currow    = 0;
+  curclip   = 0;
+  gfx_clear = 0;
+
+//--------------------------------------------------
+@serialize
+  file_mem(0,CLIPS,1024);                         // 16*16*4
+
+//--------------------------------------------------
+@slider
+  numcol = slider1 + 1;
+  numrow = slider2 + 1;
+  sync = 1/ max(1,slider3);
+
+//--------------------------------------------------
+@block
+  slider8!=freemem ? ( slider8=freemem; sliderchange(slider8); );
+
+  beatscaled = beat_position * sync;
+  syncpos = beatscaled - (beatscaled|0);
+
+  //todo: rip sync code from midi_seq
+
+//--------------------------------------------------
+@gfx
+  col_w = (gfx_w / numcol) | 0;
+  row_h = (gfx_h / numrow) | 0;
+  nn    = min(col_w,row_h);
+  n25   = (nn*0.25) | 0;
+  n50   = (nn*0.50) | 0;
+  n75   = (nn*0.75) | 0;
+
+  //----- mouse
+
+  click = (mouse_cap&3);
+
+  click ? (
+    m_col  = ( mouse_x / col_w ) | 0;
+    m_row  = ( mouse_y / row_h ) | 0;
+    m_clip = (m_row*16) + m_col;                  // 16
+
+    mouse_cap&2 ? (
+      CLIPS[m_clip*4]=0;
+    )
+    : mouse_cap&8  ? ( CLIPS[m_clip*4]=1; )  // shift
+    : mouse_cap&4  ? ( CLIPS[m_clip*4]=2; )  // ctrl
+    : mouse_cap&16 ? ( CLIPS[m_clip*4]=3; ); // alt
+  );
+
+  m_col!=curcol ? (
+    curcol = m_col;
+    curcol!=slider10 ? ( slider10=curcol; sliderchange(slider10); );
+  );
+  m_row!=currow ? (
+    currow = m_row;
+    currow!=slider11 ? ( slider11=currow; sliderchange(slider11); );
+  );
+  m_clip!=curclip ? (
+    curclip = m_clip;
+    curclip!=slider12 ? ( slider12=curclip; sliderchange(slider12); );
+  );
+
+  //----- draw grid
+
+  C = CLIPS;
+  y  = 1;
+  row = 0;
+  loop( numrow,
+    clp = C;
+    x   = 1;
+    col = 0;
+    loop( numcol,
+
+      // background
+
+      state = clp[0];
+
+      col==0 || row==0 ? (
+        state==0 ? ( gfx_r=0.7; gfx_g=0.7; gfx_b=0.7; gfx_a=1.0; ) :
+        state==1 ? ( gfx_r=0.7; gfx_g=0.0; gfx_b=0.0; gfx_a=1.0; ) :
+        state==2 ? ( gfx_r=0.0; gfx_g=0.7; gfx_b=0.0; gfx_a=1.0; ) :
+        state==3 ? ( gfx_r=0.0; gfx_g=0.0; gfx_b=0.7; gfx_a=1.0; );
+      )
+      : state==0 ? ( gfx_r=0.5; gfx_g=0.5; gfx_b=0.5; gfx_a=1.0; )
+      : state==1 ? ( gfx_r=0.5; gfx_g=0.0; gfx_b=0.0; gfx_a=1.0; )
+      : state==2 ? ( gfx_r=0.0; gfx_g=0.5; gfx_b=0.0; gfx_a=1.0; )
+      : state==3 ? ( gfx_r=0.0; gfx_g=0.0; gfx_b=0.5; gfx_a=1.0; );
+      gfx_x=x; gfx_y=y;
+      gfx_rectto(x+col_w-1,y+row_h-1);
+
+      // curclip
+
+      curclip == (row*16)+col ? (
+        gfx_r=1.0; gfx_g=1.0; gfx_b=0; gfx_a=1.0;
+        gfx_x=x-1;
+        gfx_y=y-1;
+        gfx_lineto( x+col_w-1, y-1,       0);
+        gfx_lineto( x+col_w-1, y+row_h-1, 0);
+        gfx_lineto( x-1      , y+row_h-1, 0);
+        gfx_lineto( x-1      , y-1,       0);
+      );
+
+      // play buttons
+
+      col==0 ? row!=0 ? (
+        gfx_r=1; gfx_g=1; gfx_b=1; gfx_a=1;
+        gfx_x = x + n25;
+        gfx_y = y + n25;
+        gfx_lineto( x+n75, y+n50, 0 );
+        gfx_lineto( x+n25, y+n75, 0 );
+        gfx_lineto( x+n25, y+n25, 0  );
+      );
+
+      // todo: clip content
+
+      // syncpos
+
+      gfx_r=1; gfx_g=1; gfx_b=1; gfx_a=1;
+      n = (syncpos*(col_w-1));
+      gfx_x = n+1;
+      gfx_y = 1;
+      gfx_lineto( n+1, row_h-1, 0 );
+
+      //
+
+      x += col_w;
+      col+=1;
+      clp+=4;                                     // 4
+    ); // loop channels
+    y += row_h;
+    row+=1;
+    C += (16*4);                                  // 16*4
+  ); // loop scenes
+

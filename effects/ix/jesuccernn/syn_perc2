@@ -1,0 +1,158 @@
+desc:syn_perc2 :: ccernn.2009 :: v0.0.9
+slider1: -1    <-1, 127, 1    > midi note (-1 = all)
+slider2:  0.99 < 0, 1,   0.001> master out
+slider3:  1    < 1, 10,  0.001> boost
+slider4:  4    < 0, 10 , 0.001> crossfade
+slider5:  0    < 0, 2,   1 {replace (set),mix (add),multiply (am)} > mix mode
+slider6:  0    < 0, 6,   1 {none,const,noise,spl0,sin,saw,inv.saw,squ} > wave - osc 1
+slider7:  0.75 < 0, 1,   0.001> vol - osc 1
+slider8:  50   < 0, 100, 0.001> vol decay - osc 1
+slider9:  0.6  < 0, 1,   0.001> pitch - osc 1
+slider10: 20   < 0, 100, 0.001> pitch decay - osc 1
+slider11: 4    < 0, 6,    1 {none,const,noise,spl1,sin,saw,inv.saw,squ} > wave - osc 2
+slider12: 0.75 < 0, 1,   0.001> vol - osc 2
+slider13: 25   < 0, 100, 0.001> vol decay - osc 2
+slider14: 0.25 < 0, 1,   0.001> pitch (midi) - osc 2
+slider15: 15   < 0, 100, 0.001> pitch decay - osc 2
+slider16: 0    < 0, 2,   1 {add,am,pm} > mode - osc 1+2
+slider17: 0    < 0, 1,   0.001> vol - noise
+slider18: 20   < 0, 100, 0.001> decay - noise
+slider19: 0    < 0, 1,   0.001> shape (hp) - noise
+slider20: 1    < 0, 1,   0.001> freq (lp) - filter
+slider21: 50   < 0, 100, 0.001> decay - filter
+
+@init
+
+  irate = 1/srate;
+  ir2   = 44100/srate;
+  PI2   = $pi*2;
+
+@slider
+
+  mnote  = slider1;
+  master = slider2;
+  boost  = slider3;
+  cf_d   = ir2 / max(1,slider4*slider4);
+  mixmode = slider5;
+
+  wave1 = slider6;
+
+  osc_   = slider7*slider7;
+  osc_d  = ir2 / max(1,slider8*slider8*slider8);
+  pit_   = srate * (slider9*slider9*0.1);
+  pit_d  = ir2 / max(1,slider10*slider10*slider10);
+
+  wave2 = slider11;
+
+  osc2_  = slider12*slider12;
+  osc2_d = ir2 / max(1,slider13*slider13*slider13);
+  pit2_  = srate * (slider14*slider14*0.1);
+  pit2_d = ir2 / max(1,slider15*slider15*slider15);
+
+  mode   = slider16;
+
+  noi_   = slider17*slider17;
+  noi_d  = ir2 / max(1,slider18*slider18*slider18);
+  nshape = slider19*slider19;
+  fil_   = slider20*slider20;
+  fil_d  = ir2 / max(1,slider21*slider21*slider21);
+
+@block
+
+  //TODO: check if this is necessary
+  memset(EVENTS,-1,samplesblock);
+
+  while (
+    midirecv(offset,msg1,msg23) ? (
+      msg = msg1 & 240;
+      (msg == 9*16) ? (
+        note = msg23 & 127;
+        ((mnote<0) || (mnote==note)) ? (
+          m_vel = ((msg23/256)|0) / 127;
+          m_freq   = 220 * pow(2.0,(note-36.0) / 12);
+          EVENTS[ofs*2] = m_vel;
+          EVENTS[(ofs*2)+1] = m_freq
+        );
+      );
+      midisend(offset,msg1,msg23);
+    );
+  );
+
+  offset = 0;
+
+@sample
+
+  EVENTS[offset*2] >= 0 ? (
+    vel  = EVENTS[offset*2];
+    freq = EVENTS[(offset*2)+1];
+    osc  = osc_;
+    pit  = pit_;
+    osc2 = osc2_;
+    mnote<0 ? pit2 = freq : pit2 = pit2_;
+    noi  = noi_;
+    fil  = fil_;
+  );
+  EVENTS[offset*2] = -1;
+  offset += 1;
+
+  o1 = 0;
+  wave1==1 ? o1 = ( 1;                ):
+  wave1==2 ? o1 = ( rand(2)-1;        ):
+  wave1==3 ? o1 = ( spl0;             ):
+  wave1==4 ? o1 = ( sin(phase*PI2);   ):
+  wave1==5 ? o1 = ( (phase*2)-1;      ):
+  wave1==6 ? o1 = ( 1-(phase*2);      ):
+  wave1==7 ? o1 = ( (phase<0.5)?1:-1; );
+  o1 *= osc;
+
+  ph2 = phase2;
+  mode==2 ? ph2 += o1;
+
+  o2 = 0;
+  wave2==1 ? o2 = ( 1;              ):
+  wave2==2 ? o2 = ( rand(2)-1;      ):
+  wave2==3 ? o2 = ( spl1;           ):
+  wave2==4 ? o2 = ( sin(ph2*PI2);   ):
+  wave2==5 ? o2 = ( (ph2*2)-1;      ):
+  wave2==6 ? o2 = ( 1-(ph2*2);      ):
+  wave2==7 ? o2 = ( (ph2<0.5)?1:-1; );
+  o2 *= osc2;
+
+  mode==0 ? o = o1+o2 :
+  mode==1 ? o = o1*o2 :
+  mode==2 ? o = o2;
+
+  phase += pit*irate;
+  phase>=1 ? phase-=1;
+  phase2 += pit2*irate;
+  phase2>=1 ? phase2-=1;
+
+  n = (rand(2)-1) * noi;
+  n -= ( nz0 += ((n-nz0) * nshape) );
+  o *= vel;
+  o = ( o0 += (o-o0)*cf_d );
+  out = o + (n*vel);
+  out *= boost;
+  out  = min(1,max(-1,out));
+  out  = ( z0 += ((out-z0)*fil));
+  out *= master;
+
+  osc  += (osc_t  - osc)  * osc_d;
+  pit  += (pit_t  - pit)  * pit_d;
+  osc2 += (osc2_t - osc2) * osc2_d;
+  pit2 += (pit2_t - pit2) * pit2_d;
+  noi  += (noi_t  - noi)  * noi_d;
+  fil  += (fil_t  - fil)  * fil_d;
+
+  mixmode==0 ? (
+    spl0 = out;
+    spl1 = out; 
+  ) :
+  mixmode==1 ? (
+    spl0 += out;
+    spl1 += out; 
+  ) :
+  mixmode==2 ? (
+    spl0 *= out;
+    spl1 *= out; 
+  );

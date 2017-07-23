@@ -1,0 +1,65 @@
+desc: testing option: get_all_KB / gfx_getchar()
+
+//options:get_all_KB
+
+// ================================================
+@init 
+// ================================================
+srate_init = srate-1;
+
+NOTE_OFF = $x80;           // note off MIDI message code
+NOTE_ON = $x90;            // note on MIDI message code
+AFTERTOUCH_POLY = $xA0;   // poly aftertouch MIDI message code
+CONTROL_CHANGE = $xB0;    // control change MIDI message code
+PROGRAM_CHANGE = $xC0;    // program change MIDI message code
+AFTERTOUCH_CHANNEL = $xD0;    // channel aftertouch MIDI message code
+PITCH_BEND = $xE0;        // pitch bend MIDI message code
+OTHER = $xF0;
+
+function doMidi() 
+(
+	midisend(0,CONTROL_CHANGE + 0, 0 | (127 * 256));
+	// midisend(0,CONTROL_CHANGE + 1,1|0);
+);
+
+@slider
+
+
+// ================================================
+@block
+// ================================================
+srate_block = srate;
+
+toggleState != prevState ?
+(
+   doMidi();
+);
+
+// ================================================
+@gfx 400 200
+// ================================================
+
+gfx_r=gfx_g=gfx_b =0.70;
+gfx_a =1.00;
+
+gfx_x =20; gfx_y =20;
+gfx_x +=10;
+
+prevState = toggleState;
+
+mouse_cap == 0 ? (
+    toggleState=0;
+);
+mouse_cap == 1 ? (
+    toggleState=1;
+);
+
+gfx_x = 200; 
+gfx_r=1;
+// char = gfx_getchar();
+char > 0 ? char2 = char;
+
+gfx_drawnumber(char2,0);
+
+ 
+

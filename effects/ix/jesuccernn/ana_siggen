@@ -1,0 +1,42 @@
+desc:ana_siggen :: ccernn.2009 :: v0.0.4
+slider1:0<0,7,1{silence,noise,saw,pulse,sine,inv.saw,const}>wave
+slider2:220<1,20000,0.01>freq
+slider3:0<0,1024,0.01>samples (if >0)
+slider4:0<0,1,0.01>volume
+slider5:0<0,63,1>signal output
+slider6:-1<-1,63,1>sync output
+@init
+  n = 0;
+  nadd = 0;
+@slider
+  wave = slider1;
+  freq = slider2;
+  samp = slider3;
+  vol  = slider4;
+  out  = slider5;
+  sync = slider6;
+  samp > 0 ?
+  (
+    freq = srate/samp;
+    slider2 = freq;
+    sliderchange(slider2);
+  );
+  //n = 0;
+  nadd = freq/srate;
+@sample
+  o = 0;
+  wave==1 ? ( o = rand(2)-1; ) :
+  wave==2 ? ( o = (n*2)-1; ) :
+  wave==3 ? ( n>=0.5 ? o=1 : o=-1; ) :
+  wave==4 ? ( o = sin(n*$pi*2); ) :
+  wave==5 ? ( o = ((1-n)*2)-1; ) :
+  wave==6 ? ( o = 1; );
+  sy=0;
+  n += nadd;
+  n >= 1 ?
+  (
+    n -= 1;
+    sy = 0.95;
+  );
+  spl(out) = (o*vol);
+  sync>=0 ? spl(sync) = sy;

@@ -1,0 +1,315 @@
+desc:midi_seq :: ccernn.2009 :: v0.0.3
+
+slider1:  0  <  0,    127, 1    > pattern
+slider2:  1  <  0,    1,   1    {no,yes} > auto-switch
+slider10: 0  <  0,    1,   1    {note num,note vel,ctrl.change} > mode
+slider11: 16 <  1,    128, 1    > length
+slider12: 1  <  0.25, 16,  0.25 > speed
+slider13: 0  <  0,    127, 1    > note / vel / ctrl
+slider14: 0  <  0,    15,  1    > midi channel
+slider20: 0  <  0,    127, 1    > step
+slider21: 0  < -2,    127, 1    > value
+
+//--------------------------------------------------
+@init
+
+  STATUS      = $x00000;
+  NOTEMAP     = $x08000;
+  PATTERNS    = $x10000;
+  VALUES      = $x20000;
+  i16         = 1/16;
+  i127        = 1/127;
+  i256        = 1/256;
+  gfx_clear   = 0;
+  gfx_a       = 1;
+
+  iS = STATUS;
+  iP = PATTERNS;
+  loop( 128,
+    iS[0] =  0;  // isplaying
+    iS[3] = -1;  // note
+    iS += 4;
+    iP[1]==0 ? iP[1]=16; // length
+    iP[2]==0 ? iP[2]=1;  // speed
+    iP += 8;
+  );
+
+  //memset(VALUES,0,128*128);
+
+//--------------------------------------------------
+@serialize
+
+  file_mem(0,PATTERNS,128*8  );
+  file_mem(0,VALUES,  128*128);
+
+//--------------------------------------------------
+@slider
+
+  sP = PATTERNS + (curpat*8);
+  sV = VALUES   + (curpat*128);
+
+  autoswitch = slider2;
+  lastnote=curpat;
+
+  slider1!=curpat ? (
+    curpat = slider1;
+    sP = PATTERNS + (curpat*8);
+    sV = VALUES   + (curpat*128);
+    curmode  = sP[0];
+    curlen   = sP[1];
+    curspeed = sP[2];
+    curvc    = sP[3];
+    curmidch = sP[4];
+    slider10!=curmode  ? ( slider10=curmode;  sliderchange(slider10); );
+    slider11!=curlen   ? ( slider11=curlen;   sliderchange(slider11); );
+    slider12!=curspeed ? ( slider12=curspeed; sliderchange(slider12); );
+    slider13!=curvc    ? ( slider13=curvc;    sliderchange(slider13); );
+    slider14!=curmidch ? ( slider14=curmidch; sliderchange(slider14); );
+    curval = sV[curstep];
+    slider21!=curval ? ( slider21=curval; sliderchange(slider21); );
+  );
+  slider10!=curmode ? (
+    curmode = slider10;
+    sP[0] = curmode;
+  );
+  slider11!=curlen ? (
+    curlen = slider11;
+    sP[1] = curlen;
+  );
+  slider12!=curspeed ? (
+    curspeed = slider12;
+    sP[2] = curspeed;
+  );
+  slider13!=curvc ? (
+    curvc = slider13;
+    sP[3] = curvc;
+  );
+  slider14!=curmidch ? (
+    curmidch = slider14;
+    sP[4] = curmidch;
+  );
+  slider20!=curstep ? (
+    curstep = slider20;
+    curval = sV[curstep];
+    slider21!=curval ? ( slider21=curval; sliderchange(slider21); );
+  );
+  slider21!=curval ? (
+    curval = slider21;
+    sV[curstep] = curval;
+  );
+
+//--------------------------------------------------
+@block
+
+  //----- play state
+
+  beatlen = srate / (tempo/60);
+  play_state != prevstate ? (
+    play_state & 1 ? (
+      isplaying = 1;
+    ) : (
+      isplaying = 0;
+    );
+    prevstate = play_state;
+  );
+
+  //----- midi in
+
+  while(
+    midirecv(ofs,msg1,msg23) ? (
+      m_chn = msg1 & 15;
+      m_num = msg23 & 127;
+      m_val = (msg23*i256) & 127;
+      bS = STATUS   + (m_num*4);
+      bP = PATTERNS + (m_num*8);
+      msg = (msg1&240)*i16;
+      msg==9 ? (
+        lastnote = m_num;
+        NOTEMAP[m_num] = 1;
+        bS[0] =  1;   // active
+        bS[1] =  ofs; // count
+        bS[2] = -1;   // step
+        bS[3] = -1;   // note
+      ) :
+      msg==8 ? (
+        NOTEMAP[m_num] = 0;
+        bS[0] = 0;   // active
+        bS[3]>=0 ? midisend(offset,$x80+bP[4],bS[3]);
+      );
+      //midisend(ofs,msg1,msg23);
+    );
+  );
+
+  //----- switch pattern (from midi in)
+
+  autoswitch ? (
+
+  lastnote!=curpat ? (
+    curpat = lastnote;
+    slider1!=curpat  ? ( slider1=curpat;  sliderchange(slider1); );
+    bP = PATTERNS + (curpat*8);
+    bV = VALUES   + (curpat*128);
+    curmode  = bP[0];
+    curlen   = bP[1];
+    curspeed = bP[2];
+    curvc    = bP[3];
+    curmidch = bP[4];
+    slider10!=curmode  ? ( slider10=curmode;  sliderchange(slider10); );
+    slider11!=curlen   ? ( slider11=curlen;   sliderchange(slider11); );
+    slider12!=curspeed ? ( slider12=curspeed; sliderchange(slider12); );
+    slider13!=curvc    ? ( slider13=curvc;    sliderchange(slider13); );
+    slider14!=curmidch ? ( slider14=curmidch; sliderchange(slider14); );
+    curval = bV[curstep];
+    slider21!=curval ? ( slider21=curval; sliderchange(slider21); );
+  );
+
+  );
+
+  //----- sequencers
+
+  bS = STATUS;
+  bP = PATTERNS;
+  bV = VALUES;
+  loop( 128,
+    bS[0] ? (
+      offset = 0;
+      block  = samplesblock;
+      count  = bS[1];
+      while(
+        count >= block ? (
+          count -= block;
+          block = 0;
+        ) : ( // count>=block
+          offset += count;
+          block  -= count;
+          //----------
+          step = bS[2]+1;
+          step>=bP[1] ? step-=bP[1];  // length
+          bS[2] = step;
+          note = bS[3];
+          chan = bP[4];
+          vv = bV[ step ];
+          //vv==-2 ? () :
+          vv==-1 ? (
+            note>=0 ? midisend(offset,$x80+chan, note);
+          ) :
+          vv>=0 ? (
+            mode  = bP[0];
+            vc    = bP[3];
+            mode==0 ? ( // note num
+              note>=0 ? midisend(offset,$x80+chan, note);
+              bS[3]=vv; // note
+              midisend(offset,$x90+bP[4], vv | (vc*256) );
+            ) :
+            mode==1 ? ( // note vel
+              note>=0 ? midisend(offset,$x80+chan, note);
+              //vv>0 ? (
+                bS[3]=vc; // note
+                midisend(offset,$x90+chan, vc | (vv*256) );
+              //);
+            ) :
+            mode==2 ? ( // ctrl.ch
+              midisend(offset,$xb0+chan, vc | (vv*256) );
+            );
+          );
+          //----------
+          count = beatlen/bP[2];
+        ); // count<block
+        block>0;
+      ); // while
+      bS[1] = count;
+    ); // isplaying
+    bS += 4;
+    bP += 8;
+    bV += 128;
+  ); // loop 128
+
+//--------------------------------------------------
+@gfx
+
+  xadd = (gfx_w/curlen) | 0;
+
+  //----- mouse
+
+  mouse_cap&1 || mouse_cap&2 ? (
+    //step = (mouse_x / gfx_w * curlen) | 0;
+    step = (mouse_x/xadd)|0;
+    step!=curstep  ? (
+      curstep = step;
+      slider20!=curstep ? ( slider20=curstep; sliderchange(slider20); );
+      gV = VALUES + (curpat*128);
+      curval = gV[curstep];
+      slider21!=curval ? ( slider21=curval; sliderchange(slider21); );
+    );
+    mouse_cap&4 ? n=-2 :
+    mouse_cap&2 ? n=-1 : (
+      n = ((gfx_h-mouse_y) / (gfx_h-1) * 127) | 0;
+      n = max(min(127,n),0);
+    );
+    n!=curval ? (
+      curval = n;
+      gV = VALUES + (curpat*128);
+      gV[curstep] = curval;
+      slider21!=curval ? ( slider21=curval; sliderchange(slider21); );
+    );
+  );
+
+  //----- draw
+
+  curlen<=0 ? (
+    gfx_x=0; gfx_y=0;
+    gfx_r=0.5; gfx_g=0.5; gfx_b=0.5;
+    gfx_rectto(gfx_w,gfx_h);
+  ) : (
+
+    gS = STATUS + (curpat*4);
+    gV = VALUES + (curpat*128);
+
+    i = 0;
+    x = 0;
+    loop( curlen,
+
+      //--- background
+
+      n = gV[i];
+      n==-2 ? gfx_r=0.3 :
+      n==-1 ? gfx_r=0.4 :
+      n== 0 ? gfx_r=0.5 :
+              gfx_r=0.6;
+      gfx_g = gfx_b = gfx_r;
+      i==curstep           ? gfx_b=0;
+      gS[0]==1 && gS[2]==i ? gfx_r=0;
+      gfx_x=x+1; gfx_y=0;
+      gfx_rectto(x+xadd,gfx_h);
+
+      //--- slider
+
+      n>=0 ? (
+        n *= i127; // 0..1
+        y = gfx_h - 1 - (n*(gfx_h-1));
+        gfx_x=x+1; gfx_y=y-2;
+        gfx_r=1; gfx_g=0; gfx_b=0;
+        gfx_rectto(x+xadd,y+2);
+      );
+
+      x+=xadd;
+      i+=1;
+    ); // loop curlen
+  ); // curlen>0
+
+//--------------------------------------------------
+
+// S0 - active
+// S1 - count
+// S2 - step
+// S3 - note
+
+// p0 - mode
+// p1 - length
+// p2 - speed
+// p3 - vc
+// p4 - midch
+// p5
+// p6
+// p7
+

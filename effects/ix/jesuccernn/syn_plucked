@@ -1,0 +1,40 @@
+desc:syn_plucked :: ccernn.2009 :: v0.0.3
+slider1:0.5<0,1,0.01>damp1 (freq)
+slider2:0.99<0,1,0.01>damp2 (ampl)
+@init
+  buf = 0;
+  pos    = 0;
+  size   = 1;
+  frac   = 0;
+  z0     = 0;
+@slider
+  damp1 = slider1;
+  damp2 = slider2;
+@block
+  while (
+    midirecv(ts,msg1,msg23) ? (
+      m = msg1 & 240;
+      (m == 9*16) ? (
+        note = msg23 & 127;
+        vel  = (msg23/256) | 0;
+        vol  = vel/127;
+        freq = 440 * pow(2.0,(note-69.0)/12.0);
+        dly  = srate/freq;
+        size = floor(dly);
+        frac = dly-size;
+        pos  = 0;
+        noi = size;
+      ); // noteon?
+      midisend(ts,msg1,msg23);
+    ); // midirecv
+  ); // whle
+@sample
+  noi -= 1;
+  noi>0 ? d0 = rand(2)-1 : d0 = buf[pos];
+  i0 = (d0*(1-frac)) + (z0*frac);
+  buf[pos] = ((d0*(1-damp1)) + (z0*damp1)*damp2);
+  z0 = d0;
+  pos += 1;
+  pos>=size ? pos-=size;
+  spl0 = spl1 = i0;
+

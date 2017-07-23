@@ -1,0 +1,60 @@
+cmdID_toggleMixerVis = 40078;
+cmdID_toggleMixerDocking = 40083;
+cmdID_toggleDockerVis = 41084;
+
+screensetLoadWindowSet1 = 40454;
+screensetLoadWindowSet2 = 40456;
+
+GetExtState(#cycleState, "SAM_Mixer", "cyclestate");
+
+isMixerVis = GetToggleCommandState(cmdID_toggleMixerVis);
+isMixerDocking = GetToggleCommandState(cmdID_toggleMixerDocking);
+
+savedMixerState = 0;
+savedDockerState = 0;
+
+
+(isMixerVis == 1) ? (
+    //Main_OnCommand(cmdID_toggleMixerVis, 0);
+    savedMixerState = 1;
+) : (
+    savedMixerState = 0;
+);
+
+isDockerVis = GetToggleCommandState(cmdID_toggleDockerVis);
+
+(isDockerVis == 1) ? (
+    savedDockerState = 1;
+    //ShowConsoleMsg("Only dock is visible\n");
+) : (
+    savedDockerState = 0;
+);
+
+strcat(#newStr, "savedMixerState: ");
+strcat(#newStr, sprintf(#dest, "%d", savedMixerState));
+
+strcat(#newStr, ", savedDockerState: ");
+strcat(#newStr, sprintf(#dest, "%d", savedDockerState));
+
+//ShowConsoleMsg(#newStr);
+
+function recallDockerMixerState() 
+(
+    (savedDockerState == 0) ? (
+        Main_OnCommand(cmdID_toggleDockerVis, 0);
+        Main_OnCommand(cmdID_toggleMixerVis, 0);
+    );
+);
+
+(isMixerVis == 0) ? (
+    Main_OnCommand(screensetLoadWindowSet1, 0);
+    (savedDockerState == 0) ? (
+        Main_OnCommand(cmdID_toggleDockerVis, 0);
+    );
+) : (     
+    Main_OnCommand(cmdID_toggleMixerVis, 0);
+);
+        
+//ShowConsoleMsg(Dock_UpdateDockID("ident_str", 1));
+//ShowConsoleMsg(#cycleState);
+//ShowConsoleMsg(sprintf(#dest, "%d", isMixerVis));

@@ -1,0 +1,105 @@
+desc:syn_perc :: ccernn.2009 :: v0.0.5
+
+slider1: -1   <-1, 127, 1    > midi note (-1 = all)
+slider2:  1   < 0, 1,   0.001> master out
+slider3:  1   < 1, 5,   0.001> boost
+slider4:  10  < 0, 50,  0.001> attack
+slider5:  0.8 < 0, 1,   0.001> osc vol
+slider6:  25  < 0, 100, 0.001> osc vol decay
+slider7:  0.5 < 0, 1,   0.001> osc pitch
+slider8:  30  < 0, 100, 0.001> osc pitch decay
+slider9:  0   < 0, 1,   0.001> osc pd (phase distort)
+slider10: 1   < 1, 100, 1    > osc pd scale
+slider11: 0.2 < 0, 1,   0.001> noise
+slider12: 10  < 0, 100, 0.001> noise decay
+slider13: 0   < 0, 1,   0.001> noise shape (hp)
+slider14: 1   < 0, 1,   0.001> filter (lp)
+slider15: 50  < 0, 100, 0.001> filter decay
+
+//slider16: 0   < 0, 1,   0.001> osc am
+
+@init
+
+  EVENTS = 0;
+  phase = 0;
+  z0 = 0;
+  att_t = 1; // attack target
+  osc_t = 0; // osc
+  pit_t = 0; // pitch
+  noi_t = 0; // noise
+  fil_t = 0; // filter
+
+@slider
+
+  mnote  = slider1;
+  master = slider2;
+  boost  = slider3;
+  att_d  = 1/max(1,slider4*slider4);
+  osc_   = slider5*slider5;
+  osc_d  = 1/max(1,slider6*slider6*slider6);
+  pit_   = (slider7*slider7*0.01) * srate;
+  pit_d  = 1/max(1,slider8*slider8*slider8);
+  pdstr  = slider9*slider9;
+  pdfreq = slider10 | 0;
+  noi_   = slider11*slider11;
+  noi_d  = 1/max(1,slider12*slider12*slider12);
+  nshape = slider13*slider13;
+  fil_   = slider14*slider14;
+  fil_d  = 1/max(1,slider15*slider15*slider15);
+  am = slider16;
+
+@block
+
+  memset(EVENTS,-1,samplesblock);
+  while (
+    midirecv(offset,msg1,msg23) ? (
+      msg = msg1 & 240;
+      (msg == 9*16) ? (
+        note = msg23 & 127;
+        ((mnote<0) || (mnote==note)) ? (
+          m_vel = ((msg23/256)|0) / 127;
+          //m_freq   = 440 * pow(2.0,(note-69.0)/12.0);
+          EVENTS[ofs] = m_vel;
+        );
+      );
+      midisend(offset,msg1,msg23);
+    );
+  );
+  offset = 0;
+
+@sample
+
+  EVENTS[offset] >= 0 ? (
+    vel = EVENTS[offset];
+    att = osc;
+    osc = 1;
+    pit = pit_;
+    noi = noi_;
+    fil = fil_;
+  );
+  EVENTS[offset] = -1;
+  offset += 1;
+
+  pdphase = phase*pdfreq;
+  pd = sin(pdphase*$pi*2);
+  o = sin((phase+(pd*pdstr))*$pi*2);
+  //o += (am * (o*pd));
+  phase += pit/srate;
+  phase>=1 ? phase-=1;
+  n = rand(2)-1;
+  n -= ( nz0 += ((n-nz0) * nshape) );
+  out = (att * o * osc*osc_) + ( n * noi );
+  out *= boost;
+  out *= vel;
+  out = min(1,max(-1,out));
+  out = ( z0 += ((out-z0)*fil));
+  out *= master;
+  att += (att_t - att) * att_d;
+  osc += (osc_t - osc) * osc_d;
+  pit += (pit_t - pit) * pit_d;
+  noi += (noi_t - noi) * noi_d;
+  fil += (fil_t - fil) * fil_d;
+  //spl0 = spl1 = out;
+  spl0 += out;
+  spl1 += out; 
+
