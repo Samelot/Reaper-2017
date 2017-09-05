@@ -1,0 +1,5 @@
+cmdID_toggleMasterVis = 41209;
+cmdID_toggleShowMasterRightSide = 40389;
+
+Main_OnCommand(cmdID_toggleMasterVis, 0);
+Main_OnCommand(cmdID_toggleShowMasterRightSide, 0);
