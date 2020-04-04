@@ -1,0 +1,132 @@
+desc:WaveDisplay(for audio dubler) v1
+options:no_meter
+options:want_all_kb
+
+@init
+// -- gfx ---------------------
+R = 20; G = 20; B = 20;
+gfx_clear = R+G*256+B*65536;
+
+// == Init Waveform ====================================== //
+function wave.Init(x,y,w,h, mem_offs) // args = x,y,w,h coord and buf memory offs(это важно)
+(
+  this.x = x; this.y = y;
+  this.w = w; this.h = h;
+  this.buf = mem_offs;     // peaks buf offs, must NOT cross other used mem slots!
+  this.Vzoom = 1;          // vertical zoom
+  this.div = 200;          // divfactor(smpls in peak)
+  this.min_div = 40;//400; // divfactor min
+  this.max_div = 4000;     // divfactor max
+);
+
+// == Build Waveform ==================================== //
+function wave.Build(input, trig_mrk)    // args = sample input and trig velo(if>0)
+instance(buf, min_peak,max_peak,max_trig_mrk, div, w, spos, ppos)
+local(buf_sz)
+(
+  min_peak = min(min_peak, input);   // min peak
+  max_peak = max(max_peak, input);   // max peak
+  max_trig_mrk = max(max_trig_mrk, trig_mrk); // max_trig_mrk in cur peak
+
+  // -- Save peaks - 0=min_peak, 1=max_peak, 2=max_trig_mrk; etc
+  spos >= div ? (
+    // clear buf, reset peak pos ----
+    buf_sz = w*3;
+    ppos>=buf_sz ? (
+      memset(buf, 0, buf_sz); // clear peak buf
+      ppos = 0;  // reset peak pos cnt
+    );
+
+    // save values to buf -------
+    buf[ppos]   = min_peak; // min
+    buf[ppos+1] = max_peak; // max
+    buf[ppos+2] = max_trig_mrk; // max_trig_mrk
+    ppos+=3;
+    // reset min-max values -----
+    min_peak = 10; max_peak = -10; // reset min-max peaks(v1-draw)
+    //min_peak = max_peak = 0;     // reset min-max peaks(v2-draw)
+    max_trig_mrk = 0;
+    //---------------------------
+    spos = 0;        // reset smpl pos cnt
+    wave.redraw = 1; // need redraw wave
+  );
+
+  //-----------------------------
+  spos+=1; // upd smpl pos counter
+
+);
+
+// == Draw Waveform ===================================== //
+function wave.Draw_waveform(Threshold)  // args = treshold (for tresh lines)
+instance(x,y,w,h, buf, Vzoom, div, min_div, max_div)
+local(sx, hlf_h, axis, p, min_peak, max_peak, last_min_peak,last_max_peak, thresh_line)
+(
+  //-- Draw bg, cnt --------
+  gfx_set(0.04,0.04,0.04,1);
+  gfx_rect(x-1,y,w+2,h+1,1);
+  gfx_set(0.2,0.2,0.2,1);
+  gfx_rect(x-1,y,w+2,h+1,0);
+
+  // -- draw wave ----------
+  hlf_h = h/2;
+  axis = y+hlf_h;
+  sx = x; // start draw x-pos
+  p = 0;  // peak cnt
+  last_min_peak = last_max_peak = 0;
+  loop(w,
+    // -- wave peaks -------
+    min_peak = hlf_h * buf[p] * Vzoom;
+    max_peak = hlf_h * buf[p+1] * Vzoom;
+    min_peak = min( max(min_peak, -hlf_h), hlf_h); // verify range
+    max_peak = min( max(max_peak, -hlf_h), hlf_h); // verify range
+    gfx_set(0.6,0.6,0.6,0.5);
+    gfx_line(sx, axis-min_peak, sx, axis-max_peak);
+
+    // -- wave contour -----
+    gfx_set(0.6,0.6,0.6,0.8);
+    gfx_line(sx-1, axis-last_min_peak, sx, axis-min_peak, 1);
+    gfx_line(sx-1, axis-last_max_peak, sx, axis-max_peak, 1);
+    last_min_peak = min_peak;
+    last_max_peak = max_peak;
+
+    // -- trigger markers --
+    buf[p+2] ? (
+      gfx_set(0.7,0.7,0.1,1);
+      velo_y  = max(y+h - h * buf[p+2], y); // v2
+      gfx_line(sx-1, y+h-1, sx-1, velo_y);
+      gfx_circle(sx, velo_y, 2, 1);
+      gfx_set(0.3,0.4,0.7,1);
+    );
+
+    //----------------------
+    p+=3;   // upd peak cnt
+    sx+=1;  // upd sx cnt
+  );
+
+  // -- threshold_lines ----
+  thresh_line = hlf_h * Threshold * Vzoom;
+  thresh_line < hlf_h ? (
+    gfx_set(1, 0.5, 0, 0.3);
+    gfx_line(x, axis-thresh_line, x+w, axis-thresh_line);
+    gfx_line(x, axis+thresh_line, x+w, axis+thresh_line);
+  );
+
+  //-- Zoom ----------------------------
+  //-- Horisontal --
+  ( mouse_x > x && mouse_x < x+w &&
+    mouse_y > y && mouse_y < y+h; ) ? (
+      ( mouse_wheel<0 ? div = min(max_div, ceil(div/=0.8) );
+      mouse_wheel>0 ? div = max(min_div, ceil(div*=0.8) );
+      mouse_wheel = 0;
+    );
+  );
+
+  //-- Vertical ----
+  ( mouse_ox > x && mouse_ox < x+w && mouse_oy > y && mouse_oy < y+h; ) ? (
+    (mouse_cap&1) ? ( // -- Vertical v1
+      mouse_last_y-mouse_y>0 ? Vzoom = min(10, Vzoom+=0.2 );
+      mouse_last_y-mouse_y<0 ? Vzoom = max(1,  Vzoom-=0.2 );
+    );
+  );
+
+);

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" commit="6439531cfa47f073a7e182c59e24c17b4e0070bc" name="ReaPack">
+<index version="1" commit="ddaacf0aa3cfb14c48e92fedc89e86f570e91dda" name="ReaPack">
   <category name="Extensions">
     <reapack name="ReaPack.ext" type="extension" desc="ReaPack: Package manager for REAPER">
       <metadata>
-        <link rel="donation">https://www.paypal.com/cgi-bin/webscr?cmd=_donations&amp;business=T3DEWBQJAV7WL&amp;lc=CA&amp;item_name=ReaPack%3a%20Package%20Manager%20for%20REAPER&amp;no_note=0&amp;cn=Custom%20message&amp;no_shipping=1&amp;currency_code=CAD&amp;bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted</link>
+        <link rel="donation">https://www.paypal.com/cgi-bin/webscr?business=T3DEWBQJAV7WL&amp;cmd=_donations&amp;currency_code=CAD&amp;item_name=ReaPack%3A+Package+manager+for+REAPER</link>
       </metadata>
       <version name="0.8-beta" author="cfillion" time="2016-02-16T03:26:28Z">
         <changelog><![CDATA[Bug fixes:
@@ -488,6 +488,243 @@ Changed:
         <source platform="win64" file="reaper_reapack64.dll">https://github.com/cfillion/reapack/releases/download/v1.2beta2/reaper_reapack64.dll</source>
         <source platform="linux64" file="reaper_reapack64.so">https://github.com/cfillion/reapack/releases/download/v1.2beta2/reaper_reapack64.so</source>
       </version>
+      <version name="1.2rc1" author="cfillion" time="2017-09-17T22:36:00Z">
+        <changelog><![CDATA[Added:
+* add support for Automation Item files
+* api: add ProcessQueue function
+* api: autosynchronize repositories when using AddSetRepository and the autoinstall option is enabled
+* browser: add "Copy package name" action to context menu (equivalent to Ctrl+C)
+* browser: restore selection after applying changes or synchronyzing
+* manager: make the about repository dialog follow selection
+* path: implement absolute path detection on Windows
+* support 32-bit Linux builds using gcc-multilib
+* support registering scripts into the MIDI Event List Editor and Media Explorer sections
+
+Fixed:
+* api: fix AddSetRepository not saving all repo properties when toggling enabled status
+* browser: manager: re-sort list after changing row contents
+* import: add repositories in the same order as they were entered in the URL text field
+* listview: sort identical columns by row insertion order
+* path: fix appending an absolute path to any empty path resulting in an relative path
+* path: treat absolute and relative paths as always not equal
+
+Changed:
+* archive: export to temporary file first (automatically removed if cancelled)
+* browser: always show selection actions in the context menu
+* browser: avoid opening the database twice when loading the list
+* browser: display pinned state separately from installation state
+* browser: enable Last Update column by default
+* browser: move per-package actions to a submenu when selection > 1
+* browser: show confirmation dialog only when uninstalling packages
+* core: allow opening the browser while a transaction is running
+* core: ignore errors during self-registration
+* core: report an error when folders cannot be created in the resource directory
+* do not prompt to uninstall pinned obsolete packages when syncing
+* listview: update individual cells without replacing the whole row
+* listview: various optimizations
+* path: prepend resource path to relative paths only
+* receipt: sort installed packages alphabetically
+* redesign the report dialog
+* refresh the browser only when necessary
+* report: update top label depending on which operations were performed and their result
+
+Removed:
+* api: remove commit parameter from AddSetRepository (replaced by ProcessQueue)
+* api: remove tab parameter from About* functions
+* browser: manager: remove ellipsis after "About <repository>" actions
+* browser: remove "Show descriptions" option
+* don't add or remove scripts from the Action List when enabling/disabling a repository
+* don't automatically synchronize when enabling a repository unless the autoinstall option is set
+* remote: remove overzealous length limits on repository names]]></changelog>
+        <source platform="darwin32" file="reaper_reapack32.dylib">https://github.com/cfillion/reapack/releases/download/v1.2rc1/reaper_reapack32.dylib</source>
+        <source platform="darwin64" file="reaper_reapack64.dylib">https://github.com/cfillion/reapack/releases/download/v1.2rc1/reaper_reapack64.dylib</source>
+        <source platform="win32" file="reaper_reapack32.dll">https://github.com/cfillion/reapack/releases/download/v1.2rc1/reaper_reapack32.dll</source>
+        <source platform="win64" file="reaper_reapack64.dll">https://github.com/cfillion/reapack/releases/download/v1.2rc1/reaper_reapack64.dll</source>
+        <source platform="linux32" file="reaper_reapack64.so">https://build/from/source</source>
+        <source platform="linux64" file="reaper_reapack64.so">https://build/from/source</source>
+      </version>
+      <version name="1.2rc2" author="cfillion" time="2017-10-29T16:11:17Z">
+        <changelog><![CDATA[Added:
+* browser: pass all up/down arrow keypresses to the list
+* browser: show about package window on spacebar
+* manager: display enabled status using REAPER's checkbox icons
+* manager: toggle repository enabled status when clicking on the checkbox icons or pressing spacebar
+* path: allow paths longer than 260 characters on Windows [p=1861355]
+
+Fixed:
+* browser: fix Refresh Browser (F5) action (v1.2rc1 regression)
+* listview: fix clearing queued actions in browser's queued tab (v1.2rc1 regression)
+* listview: fix header right click detection when list is scrolled on macOS
+* receipt: fix missing newline when updating through >1 versions (v1.2rc1 regression) [#21]
+* win32: fix crash when opening links (v1.2rc1 regression)
+
+Changed:
+* about: always show the about tab (even if documentation is empty or invalid)
+* about: remove "About" prefix in the title bar
+* about: split File column into File and Path in the Contents tab
+* browser: avoid repopulating the whole list when applying an asynchronous transaction
+* browser: disable impossible selection-wide operations in the Actions menu
+* browser: hide "Copy package name" from the context menu if no packages are selected
+* browser: show "Copy package names" in the Actions button's menu as well
+* listview: don't repopulate the entire list whenever the filter is changed
+* listview: enable double buffering on Windows]]></changelog>
+        <source platform="darwin32" file="reaper_reapack32.dylib">https://github.com/cfillion/reapack/releases/download/v1.2rc2/reaper_reapack32.dylib</source>
+        <source platform="darwin64" file="reaper_reapack64.dylib">https://github.com/cfillion/reapack/releases/download/v1.2rc2/reaper_reapack64.dylib</source>
+        <source platform="win32" file="reaper_reapack32.dll">https://github.com/cfillion/reapack/releases/download/v1.2rc2/reaper_reapack32.dll</source>
+        <source platform="win64" file="reaper_reapack64.dll">https://github.com/cfillion/reapack/releases/download/v1.2rc2/reaper_reapack64.dll</source>
+        <source platform="linux32" file="reaper_reapack64.so">https://build/from/source</source>
+        <source platform="linux64" file="reaper_reapack64.so">https://build/from/source</source>
+      </version>
+      <version name="1.2rc3" author="cfillion" time="2017-11-11T20:59:52Z">
+        <changelog><![CDATA[Fixed:
+- browser: don't add two consecutive separators in the context menu when selection > 1 and the cursor is not above a package
+- browser: don't enable the selection-wide reinstall action if the current version is not in the repository
+- browser: fix the package list not being refreshed after toggling the pinned status without installing or removing packages (another v1.2rc1 regression)
+- browser: prevent selection-wide install/update action from installing an older version when the current one is not in the repository
+- linux: attempt to produce binaries compatible with more Linux flavors (such as Linux Mint)
+
+Changed:
+- browser: rename "Copy package names" back to "Copy package name" in context menu
+- browser: sort package types alphabetically in the filter menu (top right button)
+- edit the title of a few windows to match the action/menu name]]></changelog>
+        <source platform="darwin32" file="reaper_reapack32.dylib">https://github.com/cfillion/reapack/releases/download/v1.2rc3/reaper_reapack32.dylib</source>
+        <source platform="darwin64" file="reaper_reapack64.dylib">https://github.com/cfillion/reapack/releases/download/v1.2rc3/reaper_reapack64.dylib</source>
+        <source platform="win32" file="reaper_reapack32.dll">https://github.com/cfillion/reapack/releases/download/v1.2rc3/reaper_reapack32.dll</source>
+        <source platform="win64" file="reaper_reapack64.dll">https://github.com/cfillion/reapack/releases/download/v1.2rc3/reaper_reapack64.dll</source>
+        <source platform="linux32" file="reaper_reapack32.so">https://github.com/cfillion/reapack/releases/download/v1.2rc3/reaper_reapack32.so</source>
+        <source platform="linux64" file="reaper_reapack64.so">https://github.com/cfillion/reapack/releases/download/v1.2rc3/reaper_reapack64.so</source>
+      </version>
+      <version name="1.2" author="cfillion" time="2017-11-22T07:53:16Z">
+        <changelog><![CDATA[This is the third stable release of ReaPack. Thank you for using ReaPack and keeping your packages up to date!
+
+The curated list of changes between ReaPack v1.1 and v1.2 is available at <https://reapack.com/release-notes/v1.2>.]]></changelog>
+        <source platform="darwin32" file="reaper_reapack32.dylib">https://github.com/cfillion/reapack/releases/download/v1.2/reaper_reapack32.dylib</source>
+        <source platform="darwin64" file="reaper_reapack64.dylib">https://github.com/cfillion/reapack/releases/download/v1.2/reaper_reapack64.dylib</source>
+        <source platform="win32" file="reaper_reapack32.dll">https://github.com/cfillion/reapack/releases/download/v1.2/reaper_reapack32.dll</source>
+        <source platform="win64" file="reaper_reapack64.dll">https://github.com/cfillion/reapack/releases/download/v1.2/reaper_reapack64.dll</source>
+        <source platform="linux32" file="reaper_reapack32.so">https://github.com/cfillion/reapack/releases/download/v1.2/reaper_reapack32.so</source>
+        <source platform="linux64" file="reaper_reapack64.so">https://github.com/cfillion/reapack/releases/download/v1.2/reaper_reapack64.so</source>
+      </version>
+      <version name="1.2.1beta" author="cfillion" time="2017-12-10T14:48:03Z">
+        <changelog><![CDATA[Fixed:
+* don't open the progress dialog while a modal dialog is shown [p=1920318]
+* fix list desynchronisation when removing rows (eg. uninstalling repositories)
+* fix possible crash when synchronizing a repository from about dialog while the obsolete prompt is displayed
+* fix the about dialog sometime reloading multiple times in a row
+* ignore '.' and do Windows absolute path detection logic when parsing the last or only path segment [p=1919963]
+* use CRLF as newline separator when copying multiple values on Windows
+
+Changed:
+* don't convert the resource path given by REAPER 5.70+ from system default ANSI code page to UTF-8 on Windows [p=1921620]
+* restore behavior of always enabling existing repositories on re-import
+* synchronize when changing the URL of a repository and the autoinstall setting is enabled]]></changelog>
+        <source platform="darwin32" file="reaper_reapack32.dylib">https://github.com/cfillion/reapack/releases/download/v1.2.1beta/reaper_reapack32.dylib</source>
+        <source platform="darwin64" file="reaper_reapack64.dylib">https://github.com/cfillion/reapack/releases/download/v1.2.1beta/reaper_reapack64.dylib</source>
+        <source platform="win32" file="reaper_reapack32.dll">https://github.com/cfillion/reapack/releases/download/v1.2.1beta/reaper_reapack32.dll</source>
+        <source platform="win64" file="reaper_reapack64.dll">https://github.com/cfillion/reapack/releases/download/v1.2.1beta/reaper_reapack64.dll</source>
+        <source platform="linux32" file="reaper_reapack32.so">https://github.com/cfillion/reapack/releases/download/v1.2.1beta/reaper_reapack32.so</source>
+        <source platform="linux64" file="reaper_reapack64.so">https://github.com/cfillion/reapack/releases/download/v1.2.1beta/reaper_reapack64.so</source>
+      </version>
+      <version name="1.2.1" author="cfillion" time="2017-12-14T16:31:49Z">
+        <changelog><![CDATA[Fixed:
+* manager: fix the Refresh action not running the queued tasks right away]]></changelog>
+        <source platform="darwin32" file="reaper_reapack32.dylib">https://github.com/cfillion/reapack/releases/download/v1.2.1/reaper_reapack32.dylib</source>
+        <source platform="darwin64" file="reaper_reapack64.dylib">https://github.com/cfillion/reapack/releases/download/v1.2.1/reaper_reapack64.dylib</source>
+        <source platform="win32" file="reaper_reapack32.dll">https://github.com/cfillion/reapack/releases/download/v1.2.1/reaper_reapack32.dll</source>
+        <source platform="win64" file="reaper_reapack64.dll">https://github.com/cfillion/reapack/releases/download/v1.2.1/reaper_reapack64.dll</source>
+        <source platform="linux32" file="reaper_reapack32.so">https://github.com/cfillion/reapack/releases/download/v1.2.1/reaper_reapack32.so</source>
+        <source platform="linux64" file="reaper_reapack64.so">https://github.com/cfillion/reapack/releases/download/v1.2.1/reaper_reapack64.so</source>
+      </version>
+      <version name="1.2.2rc" author="cfillion" time="2018-09-30T00:41:45Z">
+        <changelog><![CDATA[Fixed:
+• Fix a possible crash when changing the about dialog contents
+• Fix a possible crash when closing some windows [p=2037784]
+• Fix empty context menus being displayed on Linux instead of being discarded
+• Prevent erroneous SSL certificate verification failure on some macOS installs [p=1956940]
+• Remove scripts from the Action List even if the files do not exist when uninstalling [t=209330]
+
+Changed:
+• Automate the build system using continuous integration services
+• Use system-provided zlib on Linux and macOS
+• Replace ReaPack's own repository URL to point to reapack.com instead of GitHub]]></changelog>
+        <source platform="darwin32" file="reaper_reapack32.dylib">https://github.com/cfillion/reapack/releases/download/v1.2.2rc/reaper_reapack32.dylib</source>
+        <source platform="darwin64" file="reaper_reapack64.dylib">https://github.com/cfillion/reapack/releases/download/v1.2.2rc/reaper_reapack64.dylib</source>
+        <source platform="win32" file="reaper_reapack32.dll">https://github.com/cfillion/reapack/releases/download/v1.2.2rc/reaper_reapack32.dll</source>
+        <source platform="win64" file="reaper_reapack64.dll">https://github.com/cfillion/reapack/releases/download/v1.2.2rc/reaper_reapack64.dll</source>
+        <source platform="linux32" file="reaper_reapack32.so">https://github.com/cfillion/reapack/releases/download/v1.2.2rc/reaper_reapack32.so</source>
+        <source platform="linux64" file="reaper_reapack64.so">https://github.com/cfillion/reapack/releases/download/v1.2.2rc/reaper_reapack64.so</source>
+      </version>
+      <version name="1.2.2rc2" author="cfillion" time="2018-10-29T19:22:44Z">
+        <changelog><![CDATA[• Add the public ReaTeam/Extensions repository to the default configuration
+• Fix a memory corruption bug from v1.2.2rc when an operation completes on Windows 32-bit]]></changelog>
+        <source platform="darwin32" file="reaper_reapack32.dylib">https://github.com/cfillion/reapack/releases/download/v1.2.2rc2/reaper_reapack32.dylib</source>
+        <source platform="darwin64" file="reaper_reapack64.dylib">https://github.com/cfillion/reapack/releases/download/v1.2.2rc2/reaper_reapack64.dylib</source>
+        <source platform="win32" file="reaper_reapack32.dll">https://github.com/cfillion/reapack/releases/download/v1.2.2rc2/reaper_reapack32.dll</source>
+        <source platform="win64" file="reaper_reapack64.dll">https://github.com/cfillion/reapack/releases/download/v1.2.2rc2/reaper_reapack64.dll</source>
+        <source platform="linux32" file="reaper_reapack32.so">https://github.com/cfillion/reapack/releases/download/v1.2.2rc2/reaper_reapack32.so</source>
+        <source platform="linux64" file="reaper_reapack64.so">https://github.com/cfillion/reapack/releases/download/v1.2.2rc2/reaper_reapack64.so</source>
+      </version>
+      <version name="1.2.2rc3" author="cfillion" time="2019-02-15T05:44:22Z">
+        <changelog><![CDATA[Added:
+• implement SHA-256 checksum verification for downloaded files
+• browser: add "Synchronize packages" to the menu [p=2084579]
+• browser: add "Upload packages" action to the menu opening https://reapack.com/upload
+• receipt: annotate installation type and previous version
+
+Fixed:
+• import: fix possible crash after downloading indexes]]></changelog>
+        <source platform="darwin32" file="reaper_reapack32.dylib">https://github.com/cfillion/reapack/releases/download/v1.2.2rc3/reaper_reapack32.dylib</source>
+        <source platform="darwin64" file="reaper_reapack64.dylib">https://github.com/cfillion/reapack/releases/download/v1.2.2rc3/reaper_reapack64.dylib</source>
+        <source platform="win32" file="reaper_reapack32.dll">https://github.com/cfillion/reapack/releases/download/v1.2.2rc3/reaper_reapack32.dll</source>
+        <source platform="win64" file="reaper_reapack64.dll">https://github.com/cfillion/reapack/releases/download/v1.2.2rc3/reaper_reapack64.dll</source>
+        <source platform="linux32" file="reaper_reapack32.so">https://github.com/cfillion/reapack/releases/download/v1.2.2rc3/reaper_reapack32.so</source>
+        <source platform="linux64" file="reaper_reapack64.so">https://github.com/cfillion/reapack/releases/download/v1.2.2rc3/reaper_reapack64.so</source>
+      </version>
+      <version name="1.2.2" author="cfillion" time="2019-02-24T11:29:07Z">
+        <source platform="darwin32" file="reaper_reapack32.dylib">https://github.com/cfillion/reapack/releases/download/v1.2.2/reaper_reapack32.dylib</source>
+        <source platform="darwin64" file="reaper_reapack64.dylib">https://github.com/cfillion/reapack/releases/download/v1.2.2/reaper_reapack64.dylib</source>
+        <source platform="win32" file="reaper_reapack32.dll">https://github.com/cfillion/reapack/releases/download/v1.2.2/reaper_reapack32.dll</source>
+        <source platform="win64" file="reaper_reapack64.dll">https://github.com/cfillion/reapack/releases/download/v1.2.2/reaper_reapack64.dll</source>
+        <source platform="linux32" file="reaper_reapack32.so">https://github.com/cfillion/reapack/releases/download/v1.2.2/reaper_reapack32.so</source>
+        <source platform="linux64" file="reaper_reapack64.so">https://github.com/cfillion/reapack/releases/download/v1.2.2/reaper_reapack64.so</source>
+      </version>
+      <version name="1.2.3rc1" author="cfillion" time="2020-02-20T01:36:31Z">
+        <changelog><![CDATA[Added:
+• Add a "Visible columns:" label to the top of the list column header context menu
+• Add support for ARM 32-bit (armv7l) and ARM 64-bit (aarch64) on Linux
+• Add support for UNC paths on Windows [p=2207357]
+• Fill the Details tab of the DLL's properties in Windows Explorer
+
+Fixed:
+• Adjust the text color to be readable in the About dialog when macOS dark mode is enabled
+• Correctly display download error messages containing non-English characters on Windows [#26]
+• Don't put a check mark on the Versions menu when reinstalling the current version in the package browser
+• Fix a crash when reading repository indexes without a root element
+• Fix creating directories with paths longer than 248 characters on Windows
+• Fix flickering I-beam cursor when hovering text edit fields on macOS
+• Fix the list column header customization context menu on Linux
+• Re-enable the file URI scheme on Windows [p=2142236]
+
+Changed:
+• Improve the search filter syntax (making it more similar to REAPER's implementation):
+  - Allow matching literal leading ^ and trailing $ when quoted
+  - Interpret opening quotes in the middle of a word literally
+  - Treat closing quotes as the end of a word
+• Optimize filtering and selecting all packages in the package browser on macOS
+• Produce the Linux binaries on Ubuntu 18.04 for better compatibility across various distributions
+
+Removed:
+• Drop support for macOS 10.7 and 10.8 due to their lack of modern SSL protocols [t=222487]
+• Drop support for REAPER 5.04 and older on macOS (use 6.04 or later for best results)]]></changelog>
+        <source platform="darwin32" file="reaper_reapack-i386.dylib">https://github.com/cfillion/reapack/releases/download/v1.2.3rc1/reaper_reapack-i386.dylib</source>
+        <source platform="darwin64" file="reaper_reapack-x86_64.dylib">https://github.com/cfillion/reapack/releases/download/v1.2.3rc1/reaper_reapack-x86_64.dylib</source>
+        <source platform="linux32" file="reaper_reapack-i686.so">https://github.com/cfillion/reapack/releases/download/v1.2.3rc1/reaper_reapack-i686.so</source>
+        <source platform="linux64" file="reaper_reapack-x86_64.so">https://github.com/cfillion/reapack/releases/download/v1.2.3rc1/reaper_reapack-x86_64.so</source>
+        <source platform="linux-armv7l" file="reaper_reapack-armv7l.so">https://github.com/cfillion/reapack/releases/download/v1.2.3rc1/reaper_reapack-armv7l.so</source>
+        <source platform="linux-aarch64" file="reaper_reapack-aarch64.so">https://github.com/cfillion/reapack/releases/download/v1.2.3rc1/reaper_reapack-aarch64.so</source>
+        <source platform="win32" file="reaper_reapack-x86.dll">https://github.com/cfillion/reapack/releases/download/v1.2.3rc1/reaper_reapack-x86.dll</source>
+        <source platform="win64" file="reaper_reapack-x64.dll">https://github.com/cfillion/reapack/releases/download/v1.2.3rc1/reaper_reapack-x64.dll</source>
+      </version>
     </reapack>
   </category>
   <metadata>
@@ -496,8 +733,8 @@ Changed:
 \widowctrl\hyphauto
 
 {\pard \ql \f0 \sa180 \li0 \fi0 \b \fs36 ReaPack: Package Manager for REAPER\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 This is {\b ReaPack v[[REAPACK_VERSION]]} built on [[REAPACK_BUILDTIME]]\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 \f1 Copyright (C) 2015-2017  Christian Fillion\line
+{\pard \ql \f0 \sa180 \li0 \fi0 This is {\b ReaPack v[[REAPACK_VERSION]]} [[REAPACK_REVISION]] built on [[REAPACK_BUILDTIME]]\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 Copyright (C) 2015-2020  Christian Fillion\line
 \line
 This program is free software: you can redistribute it and/or modify\line
 it under the terms of the GNU Lesser General Public License as published by\line
@@ -514,10 +751,10 @@ GNU Lesser General Public License.\par}
 }
 ]]></description>
     <link rel="website" href="https://reapack.com">Website</link>
-    <link rel="website" href="https://github.com/cfillion/reapack/wiki">User Guide</link>
-    <link rel="website" href="http://forum.cockos.com/showthread.php?t=177978">Forum Thread</link>
-    <link rel="website" href="https://github.com/cfillion/reapack/issues">Bug Tracker</link>
-    <link rel="website" href="https://github.com/cfillion/reapack/tree/master">Source Code</link>
-    <link rel="donation">https://www.paypal.com/cgi-bin/webscr?cmd=_donations&amp;business=T3DEWBQJAV7WL&amp;lc=CA&amp;item_name=ReaPack%3a%20Package%20Manager%20for%20REAPER&amp;no_note=0&amp;cn=Custom%20message&amp;no_shipping=1&amp;currency_code=CAD&amp;bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted</link>
+    <link rel="website" href="https://reapack.com/user-guide">User guide</link>
+    <link rel="website" href="https://forum.cockos.com/showthread.php?t=177978">Forum thread</link>
+    <link rel="website" href="https://github.com/cfillion/reapack/issues">Bug tracker</link>
+    <link rel="website" href="https://github.com/cfillion/reapack">Source code</link>
+    <link rel="donation">https://www.paypal.com/cgi-bin/webscr?business=T3DEWBQJAV7WL&amp;cmd=_donations&amp;currency_code=CAD&amp;item_name=ReaPack%3A+Package+manager+for+REAPER</link>
   </metadata>
 </index>

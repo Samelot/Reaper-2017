@@ -392,7 +392,7 @@ return {
 			[1] = 0,
 			[2] = 0,
 		},
-		["last_tab"] = 1,
+		["last_tab"] = 3,
 		["mnu_0_on_act"] = false,
 		["mouse_mode"] = 1,
 		["num_btns"] = 8,

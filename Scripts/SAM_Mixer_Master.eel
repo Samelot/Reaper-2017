@@ -2,4 +2,10 @@ cmdID_toggleMasterVis = 41209;
 cmdID_toggleShowMasterRightSide = 40389;
 
 Main_OnCommand(cmdID_toggleMasterVis, 0);
-Main_OnCommand(cmdID_toggleShowMasterRightSide, 0);
+
+isMasterRightSide = GetToggleCommandState(cmdID_toggleShowMasterRightSide);
+
+(isMasterRightSide == 1) ? (
+    //Main_OnCommand(cmdID_toggleMixerVis, 0);
+    Main_OnCommand(cmdID_toggleShowMasterRightSide, 0);
+);
